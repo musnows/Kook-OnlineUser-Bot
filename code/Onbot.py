@@ -50,12 +50,6 @@ async def alive_check(msg:Message):
 @bot.command(name='CKhelp')
 async def help(msg:Message):
     logging(msg)
-    # help_Str="目前支持的命令如下：\n"
-    # help_Str+="`/alive` 看看bot是否在线\n"
-    # help_Str+="`/svck` 查看当前服务器的在线/总人数\n"
-    # help_Str+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新，默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加英文的引号来保证前缀/后缀的完整性！\n```\n/adck 4941325935609301 '频道在线 | ' ' 测试ing'\n```\n"
-    # help_Str+="`/tdck` 取消本服务器的在线人数监看\n"
-    # await msg.reply(help_Str)
     cm = CardMessage()
     c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'))
     c3.append(Module.Divider())
@@ -155,9 +149,9 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
         
         # 执行不同的提示信息
         if flag_gu == 1 and flag_ch==1:
-            await msg.reply(f"服务器在线人数监看格式已更新！\nfront [{front}]\nback [{back}]")
+            await msg.reply(f"服务器在线人数监看格式已更新！\n前缀 [{front}]\n后缀 [{back}]")
         elif flag_gu ==1 and flag_ch == 0:
-            await msg.reply(f"本服务器在线人数监看已修改频道为{ch}\nfront [{front}]\nback [{back}]")
+            await msg.reply(f"本服务器在线人数监看已修改频道为{ch}\n前缀 [{front}]\n后缀 [{back}]")
         else:
             # 直接执行第一次更新
             ret = await server_status(msg.ctx.guild.id)
@@ -170,7 +164,7 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
                         ret1= json.loads(await response.text())
             
             # ↓服务器id错误时不会执行下面的↓
-            await msg.reply(f'服务器监看系统已添加，首次更新成功！\nfront [{front}]\nback [{back}]')
+            await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
             #将ServerDict添加进list
             data.append(ServerDict)
         
