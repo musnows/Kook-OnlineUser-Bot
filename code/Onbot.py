@@ -21,7 +21,7 @@ headers={f'Authorization': f"Bot {Botoken}"}
 @bot.task.add_interval(minutes=30)
 async def botmarket():
     api ="http://bot.gekj.net/api/v1/online.bot"
-    headers = {'uuid':'a87ebe9c-1319-4394-9704-0ad2c70e2567'}
+    headers = {'uuid':'8b3b4c14-d20c-4a23-9c71-da4643b50262'}
     async with aiohttp.ClientSession() as session:
         await session.post(api, headers=headers)
 
