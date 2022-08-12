@@ -66,6 +66,7 @@ async def help(msg:Message):
     c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'),Module.Context(Element.Text("由MOAR#7134开发，开源代码见 [Github](https://github.com/Aewait/Kook-OnlineUser-Bot)",Types.Text.KMD)))
     c3.append(Module.Divider())
     #实现卡片的markdown文本
+    c3.append(Module.Header('服务器在线/总人数监看'))
     help_Str1="`/alive` 看看bot是否在线\n"
     help_Str1+="`/svck` 查看当前服务器的在线/总人数\n"
     help_Str1+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adck 111111111 '频道在线 | ' ' 测试ing'\n```\n"
@@ -75,7 +76,8 @@ async def help(msg:Message):
     c3.append(Module.Divider())
     c3.append(Module.Section(Element.Text("频道/分组id获取：打开`设置-高级-开发者模式`，右键频道复制id",Types.Text.KMD)))
     c3.append(Module.Divider())
-    help_Str2="`/adld` 在当前服务器开启`昨日新增用户`追踪器。添加第二个参数`/adld 1`则会设置定时任务，每日00:00向当前频道发送昨日新增用户的数量\n"
+    c3.append(Module.Header('服务器昨日新增用户追踪'))
+    help_Str2="`/adld` 在当前服务器开启`昨日新增用户`追踪器；添加第二个参数`/adld 1`则会设置定时任务，每日00:00向`当前频道`发送昨日新增用户的数量\n"
     help_Str2+="`/ldck` 手动查看本服务器的昨日新增用户数量\n"
     help_Str2+="`/tdld` 关闭本服务器的`昨日新增用户`追踪器\n"
     c3.append(Module.Section(Element.Text(help_Str2,Types.Text.KMD)))
