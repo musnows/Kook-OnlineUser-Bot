@@ -63,17 +63,22 @@ async def alive_check(msg:Message):
 async def help(msg:Message):
     logging(msg)
     cm = CardMessage()
-    c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'))
+    c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'),Module.Context(Element.Text("由MOAR#7134开发，开源代码见 [Github](https://github.com/Aewait/Kook-OnlineUser-Bot)",Types.Text.KMD)))
     c3.append(Module.Divider())
     #实现卡片的markdown文本
-    help_Str="`/alive` 看看bot是否在线\n"
-    help_Str+="`/svck` 查看当前服务器的在线/总人数\n"
-    help_Str+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adck 111111111111 '频道在线 | ' ' 测试ing'\n```\n"
-    help_Str+="在线人数监看设定为30分钟更新一次\n"
-    help_Str+="`/tdck` 取消本服务器的在线人数监看\n"
-    c3.append(Module.Section(Element.Text(help_Str,Types.Text.KMD)))
+    help_Str1="`/alive` 看看bot是否在线\n"
+    help_Str1+="`/svck` 查看当前服务器的在线/总人数\n"
+    help_Str1+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adck 111111111 '频道在线 | ' ' 测试ing'\n```\n"
+    help_Str1+="在线人数监看设定为30分钟更新一次\n"
+    help_Str1+="`/tdck` 取消本服务器的在线人数监看\n"
+    c3.append(Module.Section(Element.Text(help_Str1,Types.Text.KMD)))
     c3.append(Module.Divider())
     c3.append(Module.Section(Element.Text("频道/分组id获取：打开`设置-高级-开发者模式`，右键频道复制id",Types.Text.KMD)))
+    c3.append(Module.Divider())
+    help_Str2="`/adld` 在当前服务器开启`昨日新增用户`追踪器。添加第二个参数`/adld 1`则会设置定时任务，每日00:00向当前频道发送昨日新增用户的数量\n"
+    help_Str2+="`/ldck` 手动查看本服务器的昨日新增用户数量\n"
+    help_Str2+="`/tdld` 关闭本服务器的`昨日新增用户`追踪器\n"
+    c3.append(Module.Section(Element.Text(help_Str2,Types.Text.KMD)))
     c3.append(Module.Divider())
     c3.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
               Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
@@ -143,9 +148,9 @@ async def Add_YUI_ck(msg:Message,op:int=0):
             LastDay['increase']=0
             LAlist.append(LastDay)
             if op == 0:
-                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n注：若需要在本频道开启信息推送，需要添加第二个非零数字 `/adld 1`")
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n- 若需要在本频道开启信息推送，需要添加第二个非零数字作为参数：`/adld 1`")
             else:
-                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
 
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
                 json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
@@ -168,6 +173,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         debug_channel= await bot.fetch_public_channel(Debug_ch)
         await bot.send(debug_channel,err_str)
 
+
 # 手动查看服务器的昨日新增
 @bot.command(name='ldck')
 async def yday_inc_check(msg:Message):
@@ -187,6 +193,38 @@ async def yday_inc_check(msg:Message):
     await msg.reply(f"您尚未开启本服务器的新增用户追终器，请使用`/adld`开启")
 
 
+# 关闭服务器的昨日新增追踪器
+@bot.command(name='tdld')
+async def td_yday_inc_check(msg:Message):
+    logging(msg)
+    global LastDay
+    emptyList = list() #空list
+    with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
+        data = json.load(fr1)
+    flag = 0 #用于判断
+    for s in data:
+        if s['guild']==msg.ctx.guild.id:
+            flag = 1
+            print(f"Cancel: G:{s['guild']} - C:{s['channel']}")
+            await msg.reply(f"已成功取消本服务器的`昨日新增用户`追踪器")
+        else: # 不吻合，进行插入
+            #先自己创建一个元素
+            LastDay['guild']=s['guild']
+            LastDay['channel']=s['channel']
+            LastDay['user_total']=s['user_total']
+            LastDay['increase']=s['increase']
+            LastDay['date']=s['date']
+            LastDay['option']=s['option']
+            #插入进空list
+            emptyList.append(LastDay)
+
+    #最后重新执行写入
+    with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
+        json.dump(emptyList,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+    fw1.close()
+
+    if flag == 0:
+        await msg.reply(f"本服务器暂未开启`昨日新增用户`追踪器")
 
 
 # 昨日新增用户记录（自动更新）
