@@ -115,6 +115,10 @@ LastDay={
 @bot.command(name='adld')
 async def Add_YUI_ck(msg:Message,op:int=0):
     logging(msg)
+    if op <0 or op >2:
+        await msg.reply(f"选项参数错误，目前只支持 \n0:不推送信息\n1:在本频道推送信息\n2:推送信息的同时修改本频道名")
+        return 
+
     try:
         global LastDay
         LastDay['guild']=msg.ctx.guild.id
@@ -229,7 +233,8 @@ async def td_yday_inc_check(msg:Message):
         await msg.reply(f"本服务器暂未开启`昨日新增用户`追踪器")
 
 
-# 昨日新增用户记录（自动更新）
+#定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
+@bot.task.add_cron(hour=0,minute=1)
 async def yesterday_UserIncrease():
     try:
         with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
@@ -243,12 +248,31 @@ async def yesterday_UserIncrease():
             total=ret['data']['user_count']
             dif= total - s['user_total']
             s['user_total']=total
-            # 选项卡不为1，则执行发送
+            # 选项卡不为0，则执行发送
             ch=await bot.fetch_public_channel(s['channel'])
             if s['option'] == 1 and dif>s['increase']:
-                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: `{dif}`↑ (+{dif-s['increase']})\n")
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']})\n")
             elif s['option'] == 1 and dif<s['increase']:
-                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: `{dif}`↓ ({dif-s['increase']})\n")
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']})\n")
+            elif s['option'] == 1 and dif==s['increase']:
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']})\n")
+            elif s['option'] == 2:
+                url=kook+"/api/v3/channel/update"
+                params={}
+                if dif>s['increase']:
+                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']})\n")
+                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↑ (+{dif-s['increase']})"}
+                elif dif<s['increase']:
+                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']})\n")
+                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↓"}
+                else:
+                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']})\n")
+                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}-"}
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, data=params,headers=headers) as response:
+                        ret1= json.loads(await response.text())
+                        print(f"Option=2, Update_ch: {ret1['message']}")
 
             s['increase']=dif
 
@@ -265,11 +289,10 @@ async def yesterday_UserIncrease():
         await bot.send(debug_channel,err_str)
     
 
-#定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
-scheduler = AsyncIOScheduler()
-scheduler.add_job(yesterday_UserIncrease,'cron',hour=0,minute=1)
-scheduler.start()
 
+# scheduler = AsyncIOScheduler()
+# scheduler.add_job(yesterday_UserIncrease,'cron',hour=0,minute=1)
+# scheduler.start()
 
 #######################################服务器在线人数更新###################################################
 
