@@ -4,12 +4,19 @@ from sched import scheduler
 import time
 import aiohttp
 from datetime import datetime
-from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from khl import Bot, Message, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types
 
+
+from warnings import filterwarnings
+from pytz_deprecation_shim import PytzUsageWarning
+#忽略相关警告
+filterwarnings('ignore', category=PytzUsageWarning)
+
+
+# 配置机器人
 with open('./config/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 # 用读取来的 config 初始化 bot，字段对应即可
@@ -101,53 +108,88 @@ LastDay={
 @bot.command(name='adld')
 async def Add_YUI_ck(msg:Message,op:int=0):
     logging(msg)
+    try:
+        global LastDay
+        LastDay['guild']=msg.ctx.guild.id
+        LastDay['channel']=msg.ctx.channel.id
+        LastDay['option']=op # 1为启用发送,0为不启用
+        LastDay['date']= GetDate()
+        
+        flag_op=0
+        flag_sv=0
+        with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
+            LAlist = json.load(fr1)
+        
+        for s in LAlist:
+            if s['guild'] == LastDay['guild']:
+                flag_sv=1
+                s['channel']=LastDay['channel']
+                if s['option'] != op:
+                    flag_op=1
+                    s['option']=op#更新选项
+                
+                break
+                
+        if flag_sv==1 and flag_op==1 and op!=0:
+            await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
+        elif flag_sv==1 and flag_op==1 and op==0:
+            await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/ldck`功能手动查看昨日新增\n或用`/tdld`功能关闭本服务器的新增用户追踪器")
+        elif flag_sv==1 and flag_op==0:
+            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
+        elif flag_sv==0:
+            # 获取当前服务器总人数，作为下次更新依据
+            ret = await server_status(LastDay['guild'])
+            LastDay['user_total']=ret['data']['user_count']
+            LastDay['increase']=0
+            LAlist.append(LastDay)
+            if op == 0:
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n注：若需要在本频道开启信息推送，需要添加第二个非零数字 `/adld 1`")
+            else:
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
 
-    global LastDay
-    LastDay['guild']=msg.ctx.guild.id
-    LastDay['channel']=msg.ctx.channel.id
-    LastDay['option']=op # 1为启用发送,0为不启用
-    LastDay['date']= GetDate()
-    
-    flag_op=0
-    flag_sv=0
+        with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
+                json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+        fw1.close()
+
+    except Exception as result:
+        cm2 = CardMessage()
+        c = Card(Module.Header(f"很抱歉，发生了一些错误"))
+        c.append(Module.Divider())
+        c.append(Module.Section(f"【报错】 {result}\n\n您可能需要重新设置本频道的追踪器"))
+        c.append(Module.Divider())
+        c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
+            Element.Button('帮助', 'https://kook.top/Lsv21o', Types.Click.LINK)))
+        cm2.append(c)
+        await msg.reply(cm2)
+
+        err_str=f"ERR! [{GetTime()}] /adld - {result}"
+        print(err_str)
+        #发送错误信息到指定频道
+        debug_channel= await bot.fetch_public_channel(Debug_ch)
+        await bot.send(debug_channel,err_str)
+
+# 手动查看服务器的昨日新增
+@bot.command(name='ldck')
+async def yday_inc_check(msg:Message):
+    logging(msg)
+
     with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
         LAlist = json.load(fr1)
     
     for s in LAlist:
-        if s['guild'] == LastDay['guild']:
-            flag_sv=1
-            s['channel']=LastDay['channel']
-            if s['option'] != op:
-                flag_op=1
-                s['option']=op#更新选项
-            
-            break
-            
-    if flag_sv==1 and flag_op==1 and op!=0:
-        await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
-    elif flag_sv==1 and flag_op==1 and op==0:
-        await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/lack`功能手动查看昨日新增\n或用`/tdla`功能关闭本服务器的新增用户追踪器")
-    elif flag_sv==1 and flag_op==0:
-        await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
-    elif flag_sv==0:
-        # 获取当前服务器总人数，作为下次更新依据
-        ret = await server_status(LastDay['guild'])
-        LastDay['user_total']=ret['data']['user_count']
-        LastDay['increase']=0
-        LAlist.append(LastDay)
-        if op == 0:
-            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/lack`手动查看昨日新增，或重新操作本指令\n注：若需要在本频道开启信息推送，需要添加第二个非零数字`/lack 1`")
-        else:
-            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
-
-    with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-            json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
-    fw1.close()
+        if s['guild'] == msg.ctx.guild.id and s['date']!=GetDate():
+            await msg.reply(f"昨日新增用户为：{s['increase']}")
+            return
+        elif s['guild'] == msg.ctx.guild.id and s['date']==GetDate():
+            await msg.reply(f"设下追踪器还没到一天呢，明天再来试试吧！")
+            return
+    
+    await msg.reply(f"您尚未开启本服务器的新增用户追终器，请使用`/adld`开启")
 
 
 
 
-# 昨日新增用户记录
+# 昨日新增用户记录（自动更新）
 async def yesterday_UserIncrease():
     try:
         with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
@@ -180,7 +222,7 @@ async def yesterday_UserIncrease():
         await bot.send(debug_channel,err_str)
     
 
-
+#定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 scheduler = AsyncIOScheduler()
 scheduler.add_job(yesterday_UserIncrease,'cron',hour=00,minute=1)
 scheduler.start()
