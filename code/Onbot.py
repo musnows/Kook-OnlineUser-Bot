@@ -1,12 +1,14 @@
 # encoding: utf-8:
 import json
+from sched import scheduler
 import time
 import aiohttp
+from datetime import datetime
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-
-from khl import Bot, Message, EventTypes, Event,Client,PublicChannel,PublicMessage
-from khl.card import CardMessage, Card, Module, Element, Types, Struct
-
+from khl import Bot, Message, EventTypes
+from khl.card import CardMessage, Card, Module, Element, Types
 
 with open('./config/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -31,6 +33,9 @@ Debug_ch="6248953582412867"
 
 def GetTime(): #将获取当前时间封装成函数方便使用
     return time.strftime("%y-%m-%d %H:%M:%S", time.localtime())
+
+def GetDate(): #将获取当前日期成函数方便使用
+    return time.strftime("%y-%m-%d", time.localtime())
 
 # 开机的时候打印一次时间，记录重启时间
 print(f"Start at: [%s]"%GetTime())
@@ -69,14 +74,6 @@ async def help(msg:Message):
     await msg.reply(cm)
 
 
-# 用于记录服务器信息
-ServerDict={
-    'guild':'',
-    'channel':'',
-    'front':'',
-    'back':''
-}
-
 
 # 获取服务器用户数量用于更新
 async def server_status(Gulid_ID:str):
@@ -87,6 +84,117 @@ async def server_status(Gulid_ID:str):
                 ret1= json.loads(await response.text())
                 #print(ret1)
                 return ret1
+
+
+#######################################服务器昨日新增用户数量###############################################
+
+LastDay={
+    'guild':'',
+    'channel':'',
+    'user_total':'',
+    'increase':'',
+    'date':'',
+    'option':0
+}
+
+#设置监看并在指定频道发送信息
+@bot.command(name='adld')
+async def Add_YUI_ck(msg:Message,op:int=0):
+    logging(msg)
+
+    global LastDay
+    LastDay['guild']=msg.ctx.guild.id
+    LastDay['channel']=msg.ctx.channel.id
+    LastDay['option']=op # 1为启用发送,0为不启用
+    LastDay['date']= GetDate()
+    
+    flag_op=0
+    flag_sv=0
+    with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
+        LAlist = json.load(fr1)
+    
+    for s in LAlist:
+        if s['guild'] == LastDay['guild']:
+            flag_sv=1
+            s['channel']=LastDay['channel']
+            if s['option'] != op:
+                flag_op=1
+                s['option']=op#更新选项
+            
+            break
+            
+    if flag_sv==1 and flag_op==1 and op!=0:
+        await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
+    elif flag_sv==1 and flag_op==1 and op==0:
+        await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/lack`功能手动查看昨日新增\n或用`/tdla`功能关闭本服务器的新增用户追踪器")
+    elif flag_sv==1 and flag_op==0:
+        await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
+    elif flag_sv==0:
+        # 获取当前服务器总人数，作为下次更新依据
+        ret = await server_status(LastDay['guild'])
+        LastDay['user_total']=ret['data']['user_count']
+        LastDay['increase']=0
+        LAlist.append(LastDay)
+        if op == 0:
+            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/lack`手动查看昨日新增，或重新操作本指令\n注：若需要在本频道开启信息推送，需要添加第二个非零数字`/lack 1`")
+        else:
+            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
+
+    with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
+            json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+    fw1.close()
+
+
+
+
+# 昨日新增用户记录
+async def yesterday_UserIncrease():
+    try:
+        with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
+            LAlist = json.load(fr1)
+
+        for s in LAlist:
+            now_time=GetTime()
+            print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
+
+            ret = await server_status(s['guild'])
+            total=ret['data']['user_count']
+            dif= total - s['user_total']
+            s['increase']=dif
+            s['user_total']=total
+            # 选项卡不为1，则执行发送
+            if s['option'] != 1:
+                ch=await bot.fetch_public_channel(s['channel'])
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: {dif}\n")
+
+        #需要重新执行写入（更新）
+        with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
+            json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+        fw1.close()
+
+    except Exception as result:
+        err_str=f"ERR! [{GetTime()}] Yday_INC - {result}"
+        print(err_str)
+        #发送错误信息到指定频道
+        debug_channel= await bot.fetch_public_channel(Debug_ch)
+        await bot.send(debug_channel,err_str)
+    
+
+
+scheduler = AsyncIOScheduler()
+scheduler.add_job(yesterday_UserIncrease,'cron',hour=00,minute=1)
+scheduler.start()
+
+
+#######################################服务器在线人数更新###################################################
+
+# 用于记录服务器信息
+ServerDict={
+    'guild':'',
+    'channel':'',
+    'front':'',
+    'back':''
+}
 
 # 直接查看本服务器状态
 @bot.command(name='svck')
@@ -225,7 +333,7 @@ async def server_user_update():
 
         for s in svlist:
             now_time=GetTime()
-            print(f"[{now_time}] Updating: %s"%s)
+            print(f"[{now_time}] Updating: %s"%s)#打印log信息
 
             ret = await server_status(s['guild'])
             total=ret['data']['user_count']
@@ -236,7 +344,6 @@ async def server_user_update():
                 async with session.post(url, data=params,headers=headers) as response:
                         ret1= json.loads(await response.text())
             
-            #print(f"[{now_time}] update server_user_status {ret1['message']}")
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] update_server_user_status: {result}"
         print(err_str)
