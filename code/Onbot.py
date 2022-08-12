@@ -242,12 +242,15 @@ async def yesterday_UserIncrease():
             ret = await server_status(s['guild'])
             total=ret['data']['user_count']
             dif= total - s['user_total']
-            s['increase']=dif
             s['user_total']=total
             # 选项卡不为1，则执行发送
-            if s['option'] != 1:
-                ch=await bot.fetch_public_channel(s['channel'])
-                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: {dif}\n")
+            ch=await bot.fetch_public_channel(s['channel'])
+            if s['option'] == 1 and dif>s['increase']:
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: `{dif}`↑ (+{dif-s['increase']})\n")
+            elif s['option'] == 1 and dif<s['increase']:
+                await bot.send(ch,f"新的一天开始啦！本服务器昨日新增用户: `{dif}`↓ ({dif-s['increase']})\n")
+
+            s['increase']=dif
 
         #需要重新执行写入（更新）
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
@@ -264,7 +267,7 @@ async def yesterday_UserIncrease():
 
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 scheduler = AsyncIOScheduler()
-scheduler.add_job(yesterday_UserIncrease,'cron',hour=00,minute=1)
+scheduler.add_job(yesterday_UserIncrease,'cron',hour=0,minute=1)
 scheduler.start()
 
 
