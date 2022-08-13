@@ -321,6 +321,17 @@ async def server_user_check(msg:Message):
         debug_channel= await bot.fetch_public_channel(Debug_ch)
         await bot.send(debug_channel,err_str)
 
+# 处理转义字符
+def fb_modfiy(front:str,back:str):
+    front=front.replace('\-','-')
+    back=back.replace('\-','-')
+
+    front=front.replace('\\\\','\\')
+    back=back.replace('\\\\','\\')
+    #print(f"{front}  {back}")
+
+    return {'fr':front,'ba':back}
+
 
 # 设置在线人数监看
 @bot.command(name='adck',aliases=['在线人数监看'])
@@ -358,8 +369,11 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
                 else:
                     s['channel']=ch
                 
-                s['front']=front
-                s['back']=back
+                #处理转义字符
+                mstr = fb_modfiy(ServerDict['front'],ServerDict['back'])
+                s['front']=mstr['fr']
+                s['back']=mstr['ba']
+
                 flag_gu = 1
                 # 修改了之后立马更新，让用户看到修改后的结果
                 ret = await server_status(msg.ctx.guild.id)
@@ -382,6 +396,11 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
             ret = await server_status(msg.ctx.guild.id)
             total=ret['data']['user_count']
             online=ret['data']['online_count']
+            # 处理转义字符
+            mstr = fb_modfiy(ServerDict['front'],ServerDict['back'])
+            ServerDict['front']=mstr['fr']
+            ServerDict['back']=mstr['ba']
+
             url=kook+"/api/v3/channel/update"
             params = {"channel_id":ch,"name":f"{ServerDict['front']}{online}/{total}{ServerDict['back']}"}
             async with aiohttp.ClientSession() as session:
