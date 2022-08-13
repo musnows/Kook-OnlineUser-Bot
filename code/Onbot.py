@@ -69,7 +69,7 @@ async def help(msg:Message):
     c3.append(Module.Header('服务器在线/总人数监看'))
     help_Str1="`/alive` 看看bot是否在线\n"
     help_Str1+="`/svck` 查看当前服务器的在线/总人数\n"
-    help_Str1+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adck 111111111 '频道在线 | ' ' 测试ing'\n```\n"
+    help_Str1+="`/adck 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n注意第二个参数`不是频道名字`！下方有提示\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adck 111111111 '频道在线 | ' ' 测试ing'\n```\n"
     help_Str1+="在线人数监看设定为30分钟更新一次\n"
     help_Str1+="`/tdck` 取消本服务器的在线人数监看\n"
     c3.append(Module.Section(Element.Text(help_Str1,Types.Text.KMD)))
@@ -169,7 +169,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         c.append(Module.Section(f"【报错】 {result}\n\n您可能需要重新设置本频道的追踪器"))
         c.append(Module.Divider())
         c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
-            Element.Button('帮助', 'https://kook.top/Lsv21o', Types.Click.LINK)))
+            Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
         cm2.append(c)
         await msg.reply(cm2)
 
@@ -329,6 +329,15 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
     if ch == 'err':
         await msg.reply(f"您尚未指定用于更新状态的频道！channel: {ch}")
         return
+    else: # 检查频道id是否有效
+        url_ch = kook+"/api/v3/channel/view"
+        params = {"target_id":ch}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url_ch, data=params,headers=headers) as response:
+                ret= json.loads(await response.text())
+        if ret['code']!=0: #代表频道是不正确的
+            await msg.reply(f"频道id参数不正确：`{ret['message']}`\n请确认您输入的是`开发者模式`下复制的`频道id`，而不是频道的名字/服务器id！有任何问题，请点击[按钮](https://kook.top/gpbTwZ)加入帮助频道咨询")
+            return
 
     try:
         global  ServerDict
@@ -396,7 +405,7 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
         c.append(Module.Section(f"【报错】  {result}\n\n您可能需要重新设置本频道的监看事件"))
         c.append(Module.Divider())
         c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
-            Element.Button('帮助', 'https://kook.top/Lsv21o', Types.Click.LINK)))
+            Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
         cm2.append(c)
         await msg.reply(cm2)
 
