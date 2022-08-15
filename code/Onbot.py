@@ -328,6 +328,10 @@ ServerDict={
     'back':''
 }
 
+# 预加载
+with open("./log/server.json",'r',encoding='utf-8') as fr1:
+    SVlist = json.load(fr1)
+
 # 直接查看本服务器状态
 @bot.command(name='svck')
 async def server_user_check(msg:Message):
@@ -375,7 +379,7 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
             return
 
     try:
-        global  ServerDict
+        global  ServerDict,SVlist
         ServerDict['guild']=msg.ctx.guild.id
         ServerDict['channel']=ch
         ServerDict['front']=front
@@ -384,9 +388,9 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
         #用两个flag来分别判断服务器和需要更新的频道是否相同
         flag_gu = 0
         flag_ch = 0
-        with open("./log/server.json",'r',encoding='utf-8') as fr1:
-            data = json.load(fr1)
-        for s in data:
+        # with open("./log/server.json",'r',encoding='utf-8') as fr1:
+        #     SVlist = json.load(fr1)
+        for s in SVlist:
             if s['guild'] == msg.ctx.guild.id:
                 if s['channel']==ch:
                     flag_ch = 1
@@ -434,11 +438,11 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
             # ↓服务器id错误时不会执行下面的↓
             await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
             #将ServerDict添加进list
-            data.append(ServerDict)
+            SVlist.append(ServerDict)
         
         #不管是否已存在，都需要重新执行写入（更新/添加）
         with open("./log/server.json",'w',encoding='utf-8') as fw1:
-            json.dump(data,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+            json.dump(SVlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
 
     except Exception as result:
@@ -456,12 +460,12 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
 @bot.command(name='tdck',aliases=['退订在线人数监看'])
 async def Cancel_server_user_update(msg:Message):
     logging(msg)
-    global ServerDict
+    global ServerDict,SVlist
     emptyList = list() #空list
-    with open("./log/server.json",'r',encoding='utf-8') as fr1:
-        data = json.load(fr1)
+    # with open("./log/server.json",'r',encoding='utf-8') as fr1:
+    #     data = json.load(fr1)
     flag = 0 #用于判断
-    for s in data:
+    for s in SVlist:
         if s['guild']==msg.ctx.guild.id:
             flag = 1
             print(f"Cancel: G:{s['guild']} - C:{s['channel']}")
@@ -487,11 +491,12 @@ async def Cancel_server_user_update(msg:Message):
 # 定时更新服务器的在线用户/总用户状态
 @bot.task.add_interval(minutes=30)
 async def server_user_update():
+    global SVlist
     try:
-        with open("./log/server.json",'r',encoding='utf-8') as fr1:
-            svlist = json.load(fr1)
+        # with open("./log/server.json",'r',encoding='utf-8') as fr1:
+        #     svlist = json.load(fr1)
 
-        for s in svlist:
+        for s in SVlist:
             now_time=GetTime()
             print(f"[{now_time}] Updating: %s"%s)#打印log信息
 
