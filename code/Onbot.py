@@ -112,8 +112,8 @@ LastDay={
 }
 
 # 将文件作为全局变量打开（预加载）
-with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-    LAlist = json.load(fr1)
+with open("./log/yesterday.json",'r',encoding='utf-8') as frla:
+    LAlist = json.load(frla)
 
 #设置监看并在指定频道发送信息
 @bot.command(name='adld')
@@ -329,8 +329,8 @@ ServerDict={
 }
 
 # 预加载
-with open("./log/server.json",'r',encoding='utf-8') as fr1:
-    SVlist = json.load(fr1)
+with open("./log/server.json",'r',encoding='utf-8') as frsv:
+    SVlist = json.load(frsv)
 
 # 直接查看本服务器状态
 @bot.command(name='svck')
