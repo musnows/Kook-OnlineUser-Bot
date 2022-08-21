@@ -54,7 +54,7 @@ def logging(msg: Message):
 
 # 查看bot状态
 @bot.command(name='alive')
-async def alive_check(msg:Message):
+async def alive_check(msg:Message,*arg):
     logging(msg)
     await msg.reply(f"bot alive here")
 
@@ -67,20 +67,24 @@ async def help(msg:Message):
     c3.append(Module.Divider())
     #实现卡片的markdown文本
     c3.append(Module.Header('服务器在线/总人数监看'))
-    help_Str1="`/alive` 看看bot是否在线\n"
+    help_Str1 ="`/alive` 看看bot是否在线\n"
     help_Str1+="`/svck` 查看当前服务器的在线/总人数\n"
-    help_Str1+="`/adsv 频道id '前缀' '后缀'` 设置在本服务器的在线人数更新\n注意第二个参数`不是频道名字`！下方有提示\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为空。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！\n```\n/adsv 111111111 '频道在线 | ' ' 测试ing'\n```\n"
-    help_Str1+="在线人数监看设定为30分钟更新一次\n"
-    help_Str1+="`/tdsv` 取消本服务器的在线人数监看\n"
+    help_Str1+="`/adsv1 '前缀' '后缀'` 在当前频道设置本服务器的在线人数更新\n"
+    help_Str1+="`/adsv2 频道id '前缀' '后缀' ` 在指定频道设置本服务器的在线人数更新\n"
     c3.append(Module.Section(Element.Text(help_Str1,Types.Text.KMD)))
-    c3.append(Module.Divider())
-    c3.append(Module.Section(Element.Text("频道/分组id获取：打开`设置-高级-开发者模式`，右键频道复制id",Types.Text.KMD)))
+    c3.append(Module.Section(Element.Text("```\n频道/分组id获取：打开`设置-高级-开发者模式`，右键频道复制id\n```",Types.Text.KMD)))
+    help_Str2 ="注意`频道id`参数不是`频道名字`！上方有提示\n默认格式为`频道在线 10/100`。其中`频道在线 `为前缀，默认后缀为`空`。可以手动指定前缀和后缀，来适应你的频道的命名风格。记得加**英文的引号**来保证前缀/后缀的完整性！示例:\n```\n/adsv 0000000 \"频道在线 | \" \" 测试ing\"\n```\n"
+    help_Str2+="在线人数监看设定为30分钟更新一次\n"
+    help_Str2+="`/tdsv` 取消本服务器的在线人数监看\n"
+    c3.append(Module.Section(Element.Text(help_Str2,Types.Text.KMD)))
     c3.append(Module.Divider())
     c3.append(Module.Header('服务器昨日新增用户追踪'))
-    help_Str2="`/adld` 在当前服务器开启`昨日新增用户`追踪器；添加第二个参数`/adld 1`则会设置定时任务，每日00:00向`当前频道`发送昨日新增用户的数量\n"
-    help_Str2+="`/ldck` 手动查看本服务器的昨日新增用户数量\n"
-    help_Str2+="`/tdld` 关闭本服务器的`昨日新增用户`追踪器\n"
-    c3.append(Module.Section(Element.Text(help_Str2,Types.Text.KMD)))
+    help_Str3 ="`/adld` 在当前服务器开启`昨日新增用户`追踪器；\n"
+    help_Str3+="`/adld 1`会设置定时任务，每日00:00向`当前频道`发送昨日新增用户的数量\n"
+    help_Str3+="`/adld 2`则会向当前频道发送消息的同时，更新频道名字\n"
+    help_Str3+="`/ldck` 手动查看本服务器的昨日新增用户数量\n"
+    help_Str3+="`/tdld` 关闭本服务器的`昨日新增用户`追踪器\n"
+    c3.append(Module.Section(Element.Text(help_Str3,Types.Text.KMD)))
     c3.append(Module.Divider())
     c3.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
               Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
@@ -218,15 +222,7 @@ async def td_yday_inc_check(msg:Message):
             print(f"Cancel: G:{s['guild']} - C:{s['channel']}")
             await msg.reply(f"已成功取消本服务器的`昨日新增用户`追踪器")
         else: # 不吻合，进行插入
-            #先自己创建一个元素
-            LastDay['guild']=s['guild']
-            LastDay['channel']=s['channel']
-            LastDay['user_total']=s['user_total']
-            LastDay['increase']=s['increase']
-            LastDay['date']=s['date']
-            LastDay['option']=s['option']
-            #插入进空list
-            emptyList.append(LastDay)
+            emptyList.append(s)
 
     #最后重新执行写入
     with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
@@ -362,22 +358,7 @@ def fb_modfiy(front:str,back:str):
 
 
 # 设置在线人数监看
-@bot.command(name='adsv',aliases=['在线人数监看'])
-async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在线 ",back:str=" "):
-    logging(msg)
-    if ch == 'err':
-        await msg.reply(f"您尚未指定用于更新状态的频道！channel: {ch}")
-        return
-    else: # 检查频道id是否有效
-        url_ch = kook+"/api/v3/channel/view"
-        params = {"target_id":ch}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url_ch, data=params,headers=headers) as response:
-                ret= json.loads(await response.text())
-        if ret['code']!=0: #代表频道是不正确的
-            await msg.reply(f"频道id参数不正确：`{ret['message']}`\n请确认您输入的是`开发者模式`下复制的`频道id`，而不是频道的名字/服务器id！有任何问题，请点击[按钮](https://kook.top/gpbTwZ)加入帮助频道咨询")
-            return
-
+async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
     try:
         global  ServerDict,SVlist
         ServerDict['guild']=msg.ctx.guild.id
@@ -388,14 +369,12 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
         #用两个flag来分别判断服务器和需要更新的频道是否相同
         flag_gu = 0
         flag_ch = 0
-        # with open("./log/server.json",'r',encoding='utf-8') as fr1:
-        #     SVlist = json.load(fr1)
         for s in SVlist:
             if s['guild'] == msg.ctx.guild.id:
                 if s['channel']==ch:
                     flag_ch = 1
                 else:
-                    s['channel']=ch
+                    s['channel']=ServerDict['channel']
                 
                 #处理转义字符
                 mstr = fb_modfiy(ServerDict['front'],ServerDict['back'])
@@ -408,7 +387,7 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
                 total=ret['data']['user_count']
                 online=ret['data']['online_count']
                 url=kook+"/api/v3/channel/update"
-                params = {"channel_id":ch,"name":f"{s['front']}{online}/{total}{s['back']}"}
+                params = {"channel_id":ServerDict['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, data=params,headers=headers) as response:
                         ret1= json.loads(await response.text())
@@ -430,7 +409,7 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
             ServerDict['back']=mstr['ba']
 
             url=kook+"/api/v3/channel/update"
-            params = {"channel_id":ch,"name":f"{ServerDict['front']}{online}/{total}{ServerDict['back']}"}
+            params = {"channel_id":ServerDict['channel'],"name":f"{ServerDict['front']}{online}/{total}{ServerDict['back']}"}
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, data=params,headers=headers) as response:
                         ret1= json.loads(await response.text())
@@ -456,6 +435,38 @@ async def Add_server_user_update(msg:Message,ch:str="err",front:str="频道在�
         cm2.append(c)
         await msg.reply(cm2)
 
+# 手动指定频道id（适用于分组的情况）
+@bot.command(name='adsv1',aliases=['在线人数监看2'])
+async def adsv_1(msg:Message,front:str="频道在线 ",back:str=" "):
+    logging(msg)
+    # 直接执行下面的函数
+    ch=msg.ctx.channel.id
+    await Add_server_user_update(msg,ch,front,back)
+
+
+# 手动指定频道id（适用于分组的情况）
+@bot.command(name='adsv2',aliases=['在线人数监看2'])
+async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "):
+    logging(msg)
+    if ch != 'err':# 检查频道id是否有效
+        url_ch = kook+"/api/v3/channel/view"
+        params = {"target_id":ch}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url_ch, data=params,headers=headers) as response:
+                ret= json.loads(await response.text())
+        if ret['code']!=0: #代表频道是不正确的
+            await msg.reply(f"频道id参数不正确：`{ret['message']}`\n请确认您输入的是`开发者模式`下复制的`频道id`，而不是频道的名字/服务器id！有任何问题，请点击[按钮](https://kook.top/gpbTwZ)加入帮助频道咨询")
+            return
+    else:
+        await msg.reply(f"您使用了`/adsv2`命令，该命令必须指定频道id\n若想在当前频道更新在线人数，请使用`/adsv1`命令\n当然，你手动指定当前频道也不是不行")
+        return
+    
+    #过了上面的内容之后，执行下面的函数
+    await Add_server_user_update(msg,ch,front,back)
+
+
+
+
 # 取消在线人数监看
 @bot.command(name='tdsv',aliases=['退订在线人数监看'])
 async def Cancel_server_user_update(msg:Message):
@@ -468,16 +479,10 @@ async def Cancel_server_user_update(msg:Message):
     for s in SVlist:
         if s['guild']==msg.ctx.guild.id:
             flag = 1
-            print(f"Cancel: G:{s['guild']} - C:{s['channel']}")
+            print(f"tdsv - Cancel: G:{s['guild']} - C:{s['channel']}")
             await msg.reply(f"已成功取消本服务器的在线人数监看")
         else: # 不吻合，进行插入
-            #先自己创建一个元素
-            ServerDict['guild']=s['guild']
-            ServerDict['channel']=s['channel']
-            ServerDict['front']=s['front']
-            ServerDict['back']=s['back']
-            #插入进空list
-            emptyList.append(ServerDict)
+            emptyList.append(s)
 
     #最后重新执行写入
     with open("./log/server.json",'w',encoding='utf-8') as fw1:
