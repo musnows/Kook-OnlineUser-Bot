@@ -10,12 +10,6 @@ from khl import Bot, Message, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types
 
 
-from warnings import filterwarnings
-from pytz_deprecation_shim import PytzUsageWarning
-#忽略相关警告
-filterwarnings('ignore', category=PytzUsageWarning)
-
-
 # 配置机器人
 with open('./config/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -234,7 +228,7 @@ async def td_yday_inc_check(msg:Message):
 
 
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
-@bot.task.add_cron(hour=0,minute=1)
+@bot.task.add_cron(hour=0,minute=1,timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
     global LastDay,LAlist
     try:
