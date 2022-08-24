@@ -122,7 +122,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         return 
 
     try:
-        global LastDay,LAlist
+        global LAlist
         LastDay['guild']=msg.ctx.guild.id
         LastDay['channel']=msg.ctx.channel.id
         LastDay['option']=op # 1为启用发送,0为不启用
@@ -140,43 +140,45 @@ async def Add_YUI_ck(msg:Message,op:int=0):
                 if s['option'] != op:
                     flag_op=1
                     s['option']=op#更新选项
-                
                 break
-                
-        if flag_sv==1 and flag_op==1 and op!=0:
+        #print(flag_sv,' ',flag_op)
+        if flag_sv==1 and flag_op==1 and op==1:
             await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
+        elif flag_sv==1 and flag_op==1 and op==2:
+            await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！bot同时会更新本频道名称为 `📈：昨日变动 变动人数`\n")
         elif flag_sv==1 and flag_op==1 and op==0:
             await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/ldck`功能手动查看昨日新增\n或用`/tdld`功能关闭本服务器的新增用户追踪器")
         elif flag_sv==1 and flag_op==0:
             await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
         elif flag_sv==0:
             # 获取当前服务器总人数，作为下次更新依据
-            ret = await server_status(LastDay['guild'])
+            ret = await server_status(LastDay['guild']) #print(ret)
             LastDay['user_total']=ret['data']['user_count']
             LastDay['increase']=0
             LAlist.append(LastDay)
             if op == 0:
                 await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n- 若需要在本频道开启信息推送，需要添加第二个非零数字作为参数：`/adld 1`")
-            else:
-                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n")
+            elif op == 1:
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数`1`，bot会在每天的00:00向当前频道发送昨日用户数量变动信息\n")
+            elif op == 2: 
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数`2`，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n- 同时将更新本频道名称为 `📈：昨日变动 变动人数`\n")
 
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
                 json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
 
     except Exception as result:
+        err_str=f"ERR! [{GetTime()}] /adld - {result}"
+        print(err_str)
         cm2 = CardMessage()
         c = Card(Module.Header(f"很抱歉，发生了一些错误"))
         c.append(Module.Divider())
-        c.append(Module.Section(f"【报错】 {result}\n\n您可能需要重新设置本频道的追踪器"))
+        c.append(Module.Section(f"{err_str}\n\n您可能需要重新设置本频道的追踪器"))
         c.append(Module.Divider())
         c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
             Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
         cm2.append(c)
         await msg.reply(cm2)
-
-        err_str=f"ERR! [{GetTime()}] /adld - {result}"
-        print(err_str)
         #发送错误信息到指定频道
         debug_channel= await bot.fetch_public_channel(Debug_ch)
         await bot.send(debug_channel,err_str)
@@ -205,7 +207,7 @@ async def yday_inc_check(msg:Message):
 @bot.command(name='tdld')
 async def td_yday_inc_check(msg:Message):
     logging(msg)
-    global LastDay,LAlist
+    global LAlist
     emptyList = list() #空list
     # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
     #     data = json.load(fr1)
@@ -213,14 +215,15 @@ async def td_yday_inc_check(msg:Message):
     for s in LAlist:
         if s['guild']==msg.ctx.guild.id:
             flag = 1
-            print(f"Cancel: G:{s['guild']} - C:{s['channel']}")
+            print(f"Cancel Yday_Inc: G:{s['guild']} - C:{s['channel']}")
             await msg.reply(f"已成功取消本服务器的`昨日新增用户`追踪器")
         else: # 不吻合，进行插入
             emptyList.append(s)
 
     #最后重新执行写入
+    LAlist=emptyList
     with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-        json.dump(emptyList,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+        json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
     fw1.close()
 
     if flag == 0:
@@ -354,7 +357,7 @@ def fb_modfiy(front:str,back:str):
 # 设置在线人数监看
 async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
     try:
-        global  ServerDict,SVlist
+        global  SVlist
         ServerDict['guild']=msg.ctx.guild.id
         ServerDict['channel']=ch
         ServerDict['front']=front
@@ -409,6 +412,7 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
                         ret1= json.loads(await response.text())
             
             # ↓服务器id错误时不会执行下面的↓
+            print(f"First_Update successful! {ServerDict['front']}{online}/{total}{ServerDict['back']}")
             await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
             #将ServerDict添加进list
             SVlist.append(ServerDict)
@@ -465,7 +469,7 @@ async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "
 @bot.command(name='tdsv',aliases=['退订在线人数监看'])
 async def Cancel_server_user_update(msg:Message):
     logging(msg)
-    global ServerDict,SVlist
+    global SVlist
     emptyList = list() #空list
     # with open("./log/server.json",'r',encoding='utf-8') as fr1:
     #     data = json.load(fr1)
@@ -479,8 +483,9 @@ async def Cancel_server_user_update(msg:Message):
             emptyList.append(s)
 
     #最后重新执行写入
+    SVlist=emptyList
     with open("./log/server.json",'w',encoding='utf-8') as fw1:
-        json.dump(emptyList,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+        json.dump(SVlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
     fw1.close()
 
     if flag == 0:
