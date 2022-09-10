@@ -241,62 +241,68 @@ async def yesterday_UserIncrease():
         for s in LAlist:
             now_time=GetTime()
             print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
-
-            ret = await server_status(s['guild'])
-            total=ret['data']['user_count']
-            dif= total - s['user_total']
-            s['user_total']=total
-            # 选项卡不为0，则执行发送
-            ch=await bot.fetch_public_channel(s['channel'])
-            if s['option'] == 1 and dif>s['increase']:
-                if dif>0:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
-                else:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
-            elif s['option'] == 1 and dif<s['increase']:
-                if dif>0:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
-                else:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
-            elif s['option'] == 1 and dif==s['increase']:
-                if dif>0:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
-                else:
-                    await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
-            elif s['option'] == 2:
-                url=kook+"/api/v3/channel/update"
-                params={}
-                if dif>0:
-                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↑"}
-                    if dif>s['increase']:
+            try:
+                ret = await server_status(s['guild'])
+                total=ret['data']['user_count']
+                dif= total - s['user_total']
+                s['user_total']=total
+                # 选项卡不为0，则执行发送
+                ch=await bot.fetch_public_channel(s['channel'])
+                if s['option'] == 1 and dif>s['increase']:
+                    if dif>0:
                         await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
-                    elif dif<s['increase']:
+                    else:
+                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
+                elif s['option'] == 1 and dif<s['increase']:
+                    if dif>0:
                         await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
                     else:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
-                elif dif<0:
-                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↓"}
-                    if dif>s['increase']:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
-                    elif dif<s['increase']:
                         await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
+                elif s['option'] == 1 and dif==s['increase']:
+                    if dif>0:
+                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
                     else:
                         await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
-                elif dif==0:
-                    params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}-"}
-                    if dif>s['increase']:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- (+{dif-s['increase']}↑)\n")
-                    elif dif<s['increase']:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}↓)\n")
-                    else:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}-)\n")
+                elif s['option'] == 2:
+                    url=kook+"/api/v3/channel/update"
+                    params={}
+                    if dif>0:
+                        params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↑"}
+                        if dif>s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
+                        elif dif<s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
+                        else:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
+                    elif dif<0:
+                        params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↓"}
+                        if dif>s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
+                        elif dif<s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
+                        else:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
+                    elif dif==0:
+                        params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}-"}
+                        if dif>s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- (+{dif-s['increase']}↑)\n")
+                        elif dif<s['increase']:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}↓)\n")
+                        else:
+                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}-)\n")
 
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(url, data=params,headers=headers) as response:
-                        ret1= json.loads(await response.text())
-                        print(f"Option=2, Update_ch: {ret1['message']}")
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(url, data=params,headers=headers) as response:
+                            ret1= json.loads(await response.text())
+                            print(f"Option=2, Update_ch: {ret1['message']}")
 
-            s['increase']=dif
+                s['increase']=dif
+            except Exception as result:
+                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - {result}"
+                print(err_str)
+                #发送错误信息到指定频道
+                debug_channel= await bot.fetch_public_channel(Debug_ch)
+                await bot.send(debug_channel,err_str)
 
         #需要重新执行写入（更新）
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
@@ -501,17 +507,24 @@ async def server_user_update():
         #     svlist = json.load(fr1)
 
         for s in SVlist:
-            now_time=GetTime()
-            print(f"[{now_time}] Updating: %s"%s)#打印log信息
+            try:
+                now_time=GetTime()
+                print(f"[{now_time}] Updating: %s"%s)#打印log信息
 
-            ret = await server_status(s['guild'])
-            total=ret['data']['user_count']
-            online=ret['data']['online_count']
-            url=kook+"/api/v3/channel/update"
-            params = {"channel_id":s['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, data=params,headers=headers) as response:
-                        ret1= json.loads(await response.text())
+                ret = await server_status(s['guild'])
+                total=ret['data']['user_count']
+                online=ret['data']['online_count']
+                url=kook+"/api/v3/channel/update"
+                params = {"channel_id":s['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, data=params,headers=headers) as response:
+                            ret1= json.loads(await response.text())
+            except Exception as result:
+                err_str=f"ERR! [{GetTime()}] update_server_user_status:{s['guild']}\n{result}"
+                print(err_str)
+                #发送错误信息到指定频道
+                debug_channel= await bot.fetch_public_channel(Debug_ch)
+                await bot.send(debug_channel,err_str)
             
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] update_server_user_status: {result}"
