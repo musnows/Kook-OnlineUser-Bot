@@ -235,14 +235,19 @@ async def td_yday_inc_check(msg:Message):
 async def yesterday_UserIncrease():
     global LastDay,LAlist
     try:
-        # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-        #     LAlist = json.load(fr1)
 
         for s in LAlist:
             now_time=GetTime()
             print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
             try:
                 ret = await server_status(s['guild'])
+                if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
+                    log_str = f"ERR! [Yday_INC] {ret}\n"
+                    log_str +=f"[Yday_INC] del {s}"
+                    LAlist.remove(s)
+                    print(log_str)
+                    continue
+                    
                 total=ret['data']['user_count']
                 dif= total - s['user_total']
                 s['user_total']=total
@@ -308,7 +313,7 @@ async def yesterday_UserIncrease():
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
             json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
-
+        print("[BOT.TASK] Yday_INC finished!")
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] Yday_INC - {result}"
         print(err_str)
