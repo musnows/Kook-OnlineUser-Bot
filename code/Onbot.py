@@ -510,13 +510,20 @@ async def server_user_update():
     try:
         # with open("./log/server.json",'r',encoding='utf-8') as fr1:
         #     svlist = json.load(fr1)
-
+        print("[BOT.TASK] server_user_update start")
         for s in SVlist:
             try:
                 now_time=GetTime()
                 print(f"[{now_time}] Updating: %s"%s)#打印log信息
 
                 ret = await server_status(s['guild'])
+                if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
+                    log_str = f"ERR! [Yday_INC] {ret}\n"
+                    log_str +=f"[Yday_INC] del {s}"
+                    LAlist.remove(s)
+                    print(log_str)
+                    continue
+                
                 total=ret['data']['user_count']
                 online=ret['data']['online_count']
                 url=kook+"/api/v3/channel/update"
@@ -530,7 +537,8 @@ async def server_user_update():
                 #发送错误信息到指定频道
                 debug_channel= await bot.fetch_public_channel(Debug_ch)
                 await bot.send(debug_channel,err_str)
-            
+                
+        print("[BOT.TASK] server_user_update finished")
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] update_server_user_status: {result}"
         print(err_str)
