@@ -3,6 +3,7 @@ import json
 from sched import scheduler
 import time
 import aiohttp
+import traceback
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -303,7 +304,7 @@ async def yesterday_UserIncrease():
 
                 s['increase']=dif
             except Exception as result:
-                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - {result}"
+                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - ```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
                 debug_channel= await bot.fetch_public_channel(Debug_ch)
@@ -315,7 +316,7 @@ async def yesterday_UserIncrease():
         fw1.close()
         print("[BOT.TASK] Yday_INC finished!")
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] Yday_INC - {result}"
+        err_str=f"ERR! [{GetTime()}] Yday_INC - ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
         debug_channel= await bot.fetch_public_channel(Debug_ch)
@@ -346,7 +347,7 @@ async def server_user_check(msg:Message):
         online=ret['data']['online_count']
         await msg.reply(f"当前服务器用户状态为：{online}/{total}")
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] check_server_user_status: {result}"
+        err_str=f"ERR! [{GetTime()}] check_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         await msg.reply(err_str)
         #发送错误信息到指定频道
@@ -532,7 +533,7 @@ async def server_user_update():
                     async with session.post(url, data=params,headers=headers) as response:
                             ret1= json.loads(await response.text())
             except Exception as result:
-                err_str=f"ERR! [{GetTime()}] update_server_user_status:{s['guild']}\n{result}"
+                err_str=f"ERR! [{GetTime()}] update_server_user_status:{s['guild']}\n```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
                 debug_channel= await bot.fetch_public_channel(Debug_ch)
@@ -540,7 +541,7 @@ async def server_user_update():
                 
         print("[BOT.TASK] server_user_update finished")
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] update_server_user_status: {result}"
+        err_str=f"ERR! [{GetTime()}] update_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
         debug_channel= await bot.fetch_public_channel(Debug_ch)
