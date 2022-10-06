@@ -181,8 +181,8 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         cm2.append(c)
         await msg.reply(cm2)
         #发送错误信息到指定频道
-        debug_channel= await bot.fetch_public_channel(Debug_ch)
-        await bot.send(debug_channel,err_str)
+        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+        await bot.client.send(debug_channel,err_str)
 
 
 # 手动查看服务器的昨日新增
@@ -253,49 +253,49 @@ async def yesterday_UserIncrease():
                 dif= total - s['user_total']
                 s['user_total']=total
                 # 选项卡不为0，则执行发送
-                ch=await bot.fetch_public_channel(s['channel'])
+                ch=await bot.client.fetch_public_channel(s['channel'])
                 if s['option'] == 1 and dif>s['increase']:
                     if dif>0:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
                     else:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
                 elif s['option'] == 1 and dif<s['increase']:
                     if dif>0:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
                     else:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
                 elif s['option'] == 1 and dif==s['increase']:
                     if dif>0:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
                     else:
-                        await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
+                        await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
                 elif s['option'] == 2:
                     url=kook+"/api/v3/channel/update"
                     params={}
                     if dif>0:
                         params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↑"}
                         if dif>s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ (+{dif-s['increase']}↑)\n")
                         elif dif<s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}↓)\n")
                         else:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({dif-s['increase']}-)\n")
                     elif dif<0:
                         params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↓"}
                         if dif>s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ (+{dif-s['increase']}↑)\n")
                         elif dif<s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}↓)\n")
                         else:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
                     elif dif==0:
                         params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}-"}
                         if dif>s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- (+{dif-s['increase']}↑)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- (+{dif-s['increase']}↑)\n")
                         elif dif<s['increase']:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}↓)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}↓)\n")
                         else:
-                            await bot.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}-)\n")
+                            await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({dif-s['increase']}-)\n")
 
                     async with aiohttp.ClientSession() as session:
                         async with session.post(url, data=params,headers=headers) as response:
@@ -307,8 +307,8 @@ async def yesterday_UserIncrease():
                 err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - ```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
-                debug_channel= await bot.fetch_public_channel(Debug_ch)
-                await bot.send(debug_channel,err_str)
+                debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+                await bot.client.send(debug_channel,err_str)
 
         #需要重新执行写入（更新）
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
@@ -319,8 +319,8 @@ async def yesterday_UserIncrease():
         err_str=f"ERR! [{GetTime()}] Yday_INC - ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.fetch_public_channel(Debug_ch)
-        await bot.send(debug_channel,err_str)
+        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+        await bot.client.send(debug_channel,err_str)
     
 
 #######################################服务器在线人数更新###################################################
@@ -351,8 +351,8 @@ async def server_user_check(msg:Message):
         print(err_str)
         await msg.reply(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.fetch_public_channel(Debug_ch)
-        await bot.send(debug_channel,err_str)
+        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+        await bot.client.send(debug_channel,err_str)
 
 # 处理转义字符
 def fb_modfiy(front:str,back:str):
@@ -536,16 +536,16 @@ async def server_user_update():
                 err_str=f"ERR! [{GetTime()}] update_server_user_status:{s['guild']}\n```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
-                debug_channel= await bot.fetch_public_channel(Debug_ch)
-                await bot.send(debug_channel,err_str)
+                debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+                await bot.client.send(debug_channel,err_str)
                 
         print("[BOT.TASK] server_user_update finished")
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] update_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.fetch_public_channel(Debug_ch)
-        await bot.send(debug_channel,err_str)
+        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
+        await bot.client.send(debug_channel,err_str)
 
 
 bot.run()
