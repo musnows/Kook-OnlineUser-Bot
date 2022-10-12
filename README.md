@@ -27,3 +27,5 @@ pip install khl.py
 框架基于[khl.py](https://github.com/TWT233/khl.py/tree/main/example)，使用`aiohttp`来调用kook官方的api，对频道进行编辑。
 
 > aiohttp已在khl.py中包含，无需手动下载
+
+关于code里面的makefile，这是用于linux下快速启动bot后台运行的。如果你想在自己的linux服务器使用，请把里面的`py3`改成你自己云服务器上的python（就是用来命令行运行python程序的哪一个，如`python3`）
