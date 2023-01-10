@@ -356,12 +356,14 @@ async def server_user_check(msg:Message):
 
 # 处理转义字符
 def fb_modfiy(front:str,back:str):
-    front=front.replace('\-','-')
-    back=back.replace('\-','-')
+    # front=front.replace('\-','-')
+    # back=back.replace('\-','-')
 
-    front=front.replace('\\\\','\\')
-    back=back.replace('\\\\','\\')
-    #print(f"{front}  {back}")
+    # front=front.replace('\\\\','\\')
+    # back=back.replace('\\\\','\\')
+    # print(f"{front}  {back}")
+    front=front.replace('\\','')
+    back=back.replace('\\','')
 
     return {'fr':front,'ba':back}
 
