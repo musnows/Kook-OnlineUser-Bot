@@ -475,14 +475,13 @@ async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "
 async def Cancel_server_user_update(msg:Message):
     logging(msg)
     global SVdict
-    SVdict_temp = copy.deepcopy(SVdict)
-    if msg.ctx.guild.id in SVdict_temp:
+    if msg.ctx.guild.id in SVdict:
         await msg.reply(f"已成功取消本服务器的在线人数监看")
         # 保存到文件
         del SVdict[msg.ctx.guild.id]
         with open("./log/server.json",'w',encoding='utf-8') as fw1:
             json.dump(SVdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)
-        print(f"tdsv - Cancel: G:{msg.ctx.guild.id} - C:{SVdict_temp[msg.ctx.guild.id]['channel']}")
+        print(f"tdsv - Cancel: G:{msg.ctx.guild.id}")
     else: # 不存在
         await msg.reply(f"本服务器暂未开启在线人数监看")
     
