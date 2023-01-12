@@ -2,6 +2,7 @@
 import json
 from sched import scheduler
 import time
+import copy
 import aiohttp
 import traceback
 from datetime import datetime
@@ -325,17 +326,9 @@ async def yesterday_UserIncrease():
 
 #######################################服务器在线人数更新###################################################
 
-# 用于记录服务器信息
-ServerDict={
-    'guild':'',
-    'channel':'',
-    'front':'',
-    'back':''
-}
-
 # 预加载
 with open("./log/server.json",'r',encoding='utf-8') as frsv:
-    SVlist = json.load(frsv)
+    SVdict = json.load(frsv)
 
 # 直接查看本服务器状态
 @bot.command(name='svck')
@@ -371,38 +364,36 @@ def fb_modfiy(front:str,back:str):
 # 设置在线人数监看
 async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
     try:
-        global  SVlist
-        ServerDict['guild']=msg.ctx.guild.id
-        ServerDict['channel']=ch
-        ServerDict['front']=front
-        ServerDict['back']=back
-
+        global  SVdict
         #用两个flag来分别判断服务器和需要更新的频道是否相同
-        flag_gu = 0
-        flag_ch = 0
-        for s in SVlist:
-            if s['guild'] == msg.ctx.guild.id:
-                if s['channel']==ch:
-                    flag_ch = 1
-                else:
-                    s['channel']=ServerDict['channel']
-                
-                #处理转义字符
-                mstr = fb_modfiy(ServerDict['front'],ServerDict['back'])
-                s['front']=mstr['fr']
-                s['back']=mstr['ba']
+        flag_gu = 1
+        flag_ch = 1    
+        if msg.ctx.guild.id not in SVdict:
+            flag_gu = 0
+            SVdict[msg.ctx.guild.id] = {}
+        if ch != SVdict[msg.ctx.guild.id]['channel']:
+            flag_ch = 0 #频道更改
+            SVdict[msg.ctx.guild.id]['channel']=ch
 
-                flag_gu = 1
-                # 修改了之后立马更新，让用户看到修改后的结果
-                ret = await server_status(msg.ctx.guild.id)
-                total=ret['data']['user_count']
-                online=ret['data']['online_count']
-                url=kook+"/api/v3/channel/update"
-                params = {"channel_id":ServerDict['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(url, data=params,headers=headers) as response:
-                        ret1= json.loads(await response.text())
-                break
+        SVdict[msg.ctx.guild.id]['front']=front
+        SVdict[msg.ctx.guild.id]['back']=back
+
+    
+        #处理转义字符
+        mstr = fb_modfiy(SVdict[msg.ctx.guild.id]['front'],SVdict[msg.ctx.guild.id]['back'])
+        SVdict[msg.ctx.guild.id]['front']=mstr['fr']
+        SVdict[msg.ctx.guild.id]['back']=mstr['ba']
+
+        flag_gu = 1
+        # 修改了之后立马更新，让用户看到修改后的结果
+        ret = await server_status(msg.ctx.guild.id)
+        total=ret['data']['user_count']
+        online=ret['data']['online_count']
+        url=kook+"/api/v3/channel/update"
+        params = {"channel_id":SVdict[msg.ctx.guild.id]['channel'],"name":f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, data=params,headers=headers) as response:
+                ret1= json.loads(await response.text())
         
         # 执行不同的提示信息
         if flag_gu == 1 and flag_ch==1:
@@ -415,32 +406,32 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
             total=ret['data']['user_count']
             online=ret['data']['online_count']
             # 处理转义字符
-            mstr = fb_modfiy(ServerDict['front'],ServerDict['back'])
-            ServerDict['front']=mstr['fr']
-            ServerDict['back']=mstr['ba']
+            mstr = fb_modfiy(SVdict[msg.ctx.guild.id]['front'],SVdict[msg.ctx.guild.id]['back'])
+            SVdict[msg.ctx.guild.id]['front']=mstr['fr']
+            SVdict[msg.ctx.guild.id]['back']=mstr['ba']
 
             url=kook+"/api/v3/channel/update"
-            params = {"channel_id":ServerDict['channel'],"name":f"{ServerDict['front']}{online}/{total}{ServerDict['back']}"}
+            params = {"channel_id":SVdict[msg.ctx.guild.id]['channel'],"name":f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"}
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, data=params,headers=headers) as response:
                         ret1= json.loads(await response.text())
             
             # ↓服务器id错误时不会执行下面的↓
-            print(f"First_Update successful! {ServerDict['front']}{online}/{total}{ServerDict['back']}")
+            print(f"First_Update successful! {SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}")
             await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
-            #将ServerDict添加进list
-            SVlist.append(ServerDict)
-        
+
         #不管是否已存在，都需要重新执行写入（更新/添加）
         with open("./log/server.json",'w',encoding='utf-8') as fw1:
-            json.dump(SVlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+            json.dump(SVdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
 
     except Exception as result:
+        err_str=f"[adsv] Au:{msg.author_id}\n```\n{traceback.format_exc()}\n```"
+        print(err_str)
         cm2 = CardMessage()
         c = Card(Module.Header(f"很抱歉，发生了一些错误"))
         c.append(Module.Divider())
-        c.append(Module.Section(f"【报错】  {result}\n\n您可能需要重新设置本频道的监看事件"))
+        c.append(Module.Section(f"{err_str}\n\n您可能需要重新设置本频道的监看事件"))
         c.append(Module.Divider())
         c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
             Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
@@ -483,47 +474,36 @@ async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "
 @bot.command(name='tdsv',aliases=['退订在线人数监看'])
 async def Cancel_server_user_update(msg:Message):
     logging(msg)
-    global SVlist
-    emptyList = list() #空list
-    # with open("./log/server.json",'r',encoding='utf-8') as fr1:
-    #     data = json.load(fr1)
-    flag = 0 #用于判断
-    for s in SVlist:
-        if s['guild']==msg.ctx.guild.id:
-            flag = 1
-            print(f"tdsv - Cancel: G:{s['guild']} - C:{s['channel']}")
-            await msg.reply(f"已成功取消本服务器的在线人数监看")
-        else: # 不吻合，进行插入
-            emptyList.append(s)
-
-    #最后重新执行写入
-    SVlist=emptyList
-    with open("./log/server.json",'w',encoding='utf-8') as fw1:
-        json.dump(SVlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
-    fw1.close()
-
-    if flag == 0:
+    global SVdict
+    SVdict_temp = copy.deepcopy(SVdict)
+    if msg.ctx.guild.id in SVdict_temp:
+        await msg.reply(f"已成功取消本服务器的在线人数监看")
+        # 保存到文件
+        del SVdict[msg.ctx.guild.id]
+        with open("./log/server.json",'w',encoding='utf-8') as fw1:
+            json.dump(SVdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)
+        print(f"tdsv - Cancel: G:{msg.ctx.guild.id} - C:{SVdict_temp[msg.ctx.guild.id]['channel']}")
+    else: # 不存在
         await msg.reply(f"本服务器暂未开启在线人数监看")
-
+    
 
 # 定时更新服务器的在线用户/总用户状态
-@bot.task.add_interval(minutes=30)
+@bot.task.add_interval(minutes=1)
 async def server_user_update():
-    global SVlist
+    global SVdict
     try:
-        # with open("./log/server.json",'r',encoding='utf-8') as fr1:
-        #     svlist = json.load(fr1)
         print("[BOT.TASK] server_user_update start")
-        for s in SVlist:
+        SVdict_temp = copy.deepcopy(SVdict)#深拷贝
+        for g,s in SVdict_temp.items():
             try:
                 now_time=GetTime()
-                print(f"[{now_time}] Updating: %s"%s)#打印log信息
-
-                ret = await server_status(s['guild'])
+                print(f"[{now_time}] Upd G:{g}")#打印log信息
+                # 调用api进行更新
+                ret = await server_status(g)
                 if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
-                    log_str = f"ERR! [Yday_INC] {ret}\n"
-                    log_str +=f"[Yday_INC] del {s}"
-                    LAlist.remove(s)
+                    log_str = f"ERR! [GusrUPD] {ret}\n"
+                    log_str +=f"[GusrUPD] Del G:{g} D:{s}"
+                    del SVdict[g] #删除键值
                     print(log_str)
                     continue
                 
@@ -535,11 +515,16 @@ async def server_user_update():
                     async with session.post(url, data=params,headers=headers) as response:
                             ret1= json.loads(await response.text())
             except Exception as result:
-                err_str=f"ERR! [{GetTime()}] update_server_user_status:{s['guild']}\n```\n{traceback.format_exc()}\n```\n"
+                err_str=f"ERR! [{GetTime()}] update_server_user_status:{g}\n```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
                 debug_channel= await bot.client.fetch_public_channel(Debug_ch)
                 await bot.client.send(debug_channel,err_str)
+
+        # 不相同代表有删除，保存
+        if SVdict_temp != SVdict:
+            with open("./log/server.json",'w',encoding='utf-8') as fw1:
+                json.dump(SVdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)
                 
         print("[BOT.TASK] server_user_update finished")
     except Exception as result:
