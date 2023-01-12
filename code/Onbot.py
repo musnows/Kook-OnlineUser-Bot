@@ -237,8 +237,8 @@ async def td_yday_inc_check(msg:Message):
 async def yesterday_UserIncrease():
     global LastDay,LAlist
     try:
-
-        for s in LAlist:
+        LAlist_temp = copy.deepcopy(LAlist)
+        for s in LAlist_temp:
             now_time=GetTime()
             print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
             try:
