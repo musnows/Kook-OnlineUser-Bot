@@ -366,11 +366,11 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
     try:
         global  SVdict
         #用两个flag来分别判断服务器和需要更新的频道是否相同
-        flag_gu = 1
+        flag_gu = 1 #旧服务器
         flag_ch = 1    
         if msg.ctx.guild.id not in SVdict:
-            flag_gu = 0
-            SVdict[msg.ctx.guild.id] = {}
+            flag_gu = 0 #新增服务器
+            SVdict[msg.ctx.guild.id] = {'channel':'','front':'','back':''}
         if ch != SVdict[msg.ctx.guild.id]['channel']:
             flag_ch = 0 #频道更改
             SVdict[msg.ctx.guild.id]['channel']=ch
@@ -384,7 +384,6 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
         SVdict[msg.ctx.guild.id]['front']=mstr['fr']
         SVdict[msg.ctx.guild.id]['back']=mstr['ba']
 
-        flag_gu = 1
         # 修改了之后立马更新，让用户看到修改后的结果
         ret = await server_status(msg.ctx.guild.id)
         total=ret['data']['user_count']
@@ -400,22 +399,7 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
             await msg.reply(f"服务器在线人数监看格式已更新！\n前缀 [{front}]\n后缀 [{back}]")
         elif flag_gu ==1 and flag_ch == 0:
             await msg.reply(f"本服务器在线人数监看已修改频道为{ch}\n前缀 [{front}]\n后缀 [{back}]")
-        else:
-            # 直接执行第一次更新
-            ret = await server_status(msg.ctx.guild.id)
-            total=ret['data']['user_count']
-            online=ret['data']['online_count']
-            # 处理转义字符
-            mstr = fb_modfiy(SVdict[msg.ctx.guild.id]['front'],SVdict[msg.ctx.guild.id]['back'])
-            SVdict[msg.ctx.guild.id]['front']=mstr['fr']
-            SVdict[msg.ctx.guild.id]['back']=mstr['ba']
-
-            url=kook+"/api/v3/channel/update"
-            params = {"channel_id":SVdict[msg.ctx.guild.id]['channel'],"name":f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"}
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, data=params,headers=headers) as response:
-                        ret1= json.loads(await response.text())
-            
+        else:            
             # ↓服务器id错误时不会执行下面的↓
             print(f"First_Update successful! {SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}")
             await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
