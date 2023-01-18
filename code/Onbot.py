@@ -1,12 +1,9 @@
 # encoding: utf-8:
 import json
-from sched import scheduler
 import time
 import copy
 import aiohttp
 import traceback
-from datetime import datetime
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from khl import Bot, Message, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types
