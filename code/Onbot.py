@@ -471,7 +471,7 @@ async def Cancel_server_user_update(msg:Message):
     
 
 # 定时更新服务器的在线用户/总用户状态
-@bot.task.add_interval(minutes=1)
+@bot.task.add_interval(minutes=20)
 async def server_user_update():
     global SVdict
     try:
@@ -498,8 +498,11 @@ async def server_user_update():
                     async with session.post(url, data=params,headers=headers) as response:
                             ret1= json.loads(await response.text())
             except Exception as result:
-                err_str=f"ERR! [{GetTime()}] update_server_user_status:{g}\n```\n{traceback.format_exc()}\n```\n"
+                err_cur=str(traceback.format_exc()) 
+                err_str=f"ERR! [{GetTime()}] update_server_user_status:{g}\n```\n{err_cur}\n```\n"             
                 print(err_str)
+                if "json.decoder.JSONDecodeError" in err_cur:
+                    print(await response.text())
                 #发送错误信息到指定频道
                 debug_channel= await bot.client.fetch_public_channel(Debug_ch)
                 await bot.client.send(debug_channel,err_str)
