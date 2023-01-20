@@ -287,7 +287,7 @@ async def yesterday_UserIncrease():
                     if s['option'] == 2:
                         await channel_update(s['channel'],name_str)
             except Exception as result:
-                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - ```\n{traceback.format_exc()}\n```\n"
+                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} \n```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
                 await bot.client.send(debug_ch,err_str)
@@ -296,7 +296,7 @@ async def yesterday_UserIncrease():
         await file_save("./log/yesterday.json",LAdict)
         print(f"[BOT.TASK] Yday_INC finished at {GetTime()}")
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] Yday_INC - ```\n{traceback.format_exc()}\n```\n"
+        err_str=f"ERR! [{GetTime()}] Yday_INC \n```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
         await bot.client.send(debug_ch,err_str)
@@ -322,12 +322,6 @@ async def server_user_check(msg:Message):
 
 # 处理转义字符
 def fb_modfiy(front:str,back:str):
-    # front=front.replace('\-','-')
-    # back=back.replace('\-','-')
-
-    # front=front.replace('\\\\','\\')
-    # back=back.replace('\\\\','\\')
-    # print(f"{front}  {back}")
     front=front.replace('\\','')
     back=back.replace('\\','')
 
