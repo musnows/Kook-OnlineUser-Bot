@@ -184,16 +184,22 @@ async def Add_YUI_ck(msg:Message,op:int=0,*arg):
 @bot.command(name='ldck')
 async def yday_inc_check(msg:Message):
     logging(msg)
-    global LAdict
-    for s in LAdict:
-        if s['guild'] == msg.ctx.guild.id and s['date']!=GetDate():
-            await msg.reply(f"昨日用户变动为：{s['increase']}")
-            return
-        elif s['guild'] == msg.ctx.guild.id and s['date']==GetDate():
-            await msg.reply(f"设下追踪器还没到一天呢，明天再来试试吧！")
-            return
-    
-    await msg.reply(f"您尚未开启本服务器的新增用户追终器，请使用`/adld`开启")
+    try:
+        global LAdict
+        if msg.ctx.guild.id in LAdict:
+            if LAdict[msg.ctx.guild.id]['date']!=GetDate(): #日期不相等
+                await msg.reply(f"昨日用户变动为：{LAdict[msg.ctx.guild.id]['increase']}")
+            elif LAdict[msg.ctx.guild.id]['date']==GetDate(): #日期相等
+                await msg.reply(f"设下追踪器还没到一天呢，明天再来试试吧！")
+        else:
+            await msg.reply(f"您尚未开启本服务器的新增用户追终器，请使用`/adld`开启")
+    except Exception as result:
+        err_str=f"ERR! [{GetTime()}] /ldck - {result}"
+        print(err_str)
+        await msg.reply(err_str)
+        #发送错误信息到指定频道
+        await bot.client.send(debug_ch,err_str)
+
 
 
 # 关闭服务器的昨日新增追踪器
