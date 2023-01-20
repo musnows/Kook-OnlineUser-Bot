@@ -99,53 +99,62 @@ async def server_status(Gulid_ID:str):
             #print(ret1)
             return ret1
 
+# 保存文件
+async def file_save(path:str,value):
+    with open(path,'w',encoding='utf-8') as fw1:
+        json.dump(value,fw1,indent=2,sort_keys=True, ensure_ascii=False)
 
 #######################################服务器昨日新增用户数量###############################################
 
 
 #设置监看并在指定频道发送信息
 @bot.command(name='adld')
-async def Add_YUI_ck(msg:Message,op:int=0):
+async def Add_YUI_ck(msg:Message,op:int=0,*arg):
     logging(msg)
     if op <0 or op >2:
         await msg.reply(f"选项参数错误，目前只支持 \n0:不推送信息\n1:在本频道推送信息\n2:推送信息的同时修改本频道名")
         return 
+    if arg !=():
+        await msg.reply(f"多余参数，目前只支持 \n0:不推送信息\n1:在本频道推送信息\n2:推送信息的同时修改本频道名")
+        return
 
     try:
         global LAdict
-        LastDay['guild']=msg.ctx.guild.id
-        LastDay['channel']=msg.ctx.channel.id
-        LastDay['option']=op # 1为启用发送,0为不启用
-        LastDay['date']= GetDate()
         
         flag_op=0
         flag_sv=0
-        # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-        #     LAdict = json.load(fr1)
+        guild_id = msg.ctx.guild.id # 服务器id
+        channel_id = msg.ctx.channel.id # 频道id
+        if guild_id in LAdict:
+            flag_sv = 1 # 服务器在
+            LAdict[guild_id]['channel'] = channel_id # 更新频道
+            if LAdict[guild_id]['option'] != op: 
+                flag_op = 1 #选项不同
+                LAdict[guild_id]['option'] = op # 更新
+        else:
+            LAdict[guild_id]={
+                'channel':msg.ctx.channel.id,
+                'option':op,
+                'date':GetDate(),
+                'user_total':0,
+                'increase':0
+            }
+            print(f"[adld] new LAdict[{guild_id}]")
         
-        for s in LAdict:
-            if s['guild'] == LastDay['guild']:
-                flag_sv=1
-                s['channel']=LastDay['channel']
-                if s['option'] != op:
-                    flag_op=1
-                    s['option']=op#更新选项
-                break
-        #print(flag_sv,' ',flag_op)
-        if flag_sv==1 and flag_op==1 and op==1:
-            await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
-        elif flag_sv==1 and flag_op==1 and op==2:
-            await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！bot同时会更新本频道名称为 `📈：昨日变动 变动人数`\n")
-        elif flag_sv==1 and flag_op==1 and op==0:
-            await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/ldck`功能手动查看昨日新增\n或用`/tdld`功能关闭本服务器的新增用户追踪器")
-        elif flag_sv==1 and flag_op==0:
-            await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
-        elif flag_sv==0:
+        if flag_sv:
+            if flag_op:
+                if op==1:
+                    await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！")
+                elif op==2:
+                    await msg.reply(f"已在本频道开启`昨日新增用户`的提醒信息推送！bot同时会更新本频道名称为 `📈：昨日变动 变动人数`\n")
+                elif op==0:
+                    await msg.reply(f"已关闭本频道的`昨日新增用户`的提醒信息推送！\n- 追踪仍在进行，您可以用`/ldck`功能手动查看昨日新增\n或用`/tdld`功能关闭本服务器的新增用户追踪器")
+            else:
+                await msg.reply(f"本服务器`昨日新增用户`追踪器已开启，请勿重复操作")
+        else:
             # 获取当前服务器总人数，作为下次更新依据
-            ret = await server_status(LastDay['guild']) #print(ret)
-            LastDay['user_total']=ret['data']['user_count']
-            LastDay['increase']=0
-            LAdict.append(LastDay)
+            ret = await server_status(guild_id)
+            LAdict[guild_id]['user_total']=ret['data']['user_count']
             if op == 0:
                 await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n- 若需要在本频道开启信息推送，需要添加第二个非零数字作为参数：`/adld 1`")
             elif op == 1:
@@ -153,10 +162,8 @@ async def Add_YUI_ck(msg:Message,op:int=0):
             elif op == 2: 
                 await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数`2`，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n- 同时将更新本频道名称为 `📈：昨日变动 变动人数`\n")
 
-        with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-                json.dump(LAdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
-        fw1.close()
-
+        await file_save("./log/yesterday.json",LAdict)# 保存文件
+        print(f"[{GetTime()}] [adld] G:{guild_id} C:{channel_id} add by Au:{msg.author_id}")
     except Exception as result:
         err_str=f"ERR! [{GetTime()}] /adld - {result}"
         print(err_str)
@@ -177,9 +184,6 @@ async def Add_YUI_ck(msg:Message,op:int=0):
 @bot.command(name='ldck')
 async def yday_inc_check(msg:Message):
     logging(msg)
-
-    # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-    #     LAdict = json.load(fr1)
     global LAdict
     for s in LAdict:
         if s['guild'] == msg.ctx.guild.id and s['date']!=GetDate():
@@ -222,7 +226,7 @@ async def td_yday_inc_check(msg:Message):
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0,minute=1,timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
-    global LastDay,LAdict
+    global tmpDict,LAdict
     try:
         LAdict_temp = copy.deepcopy(LAdict)
         for s in LAdict_temp:
