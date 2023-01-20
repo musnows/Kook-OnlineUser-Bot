@@ -458,12 +458,12 @@ async def Cancel_server_user_update(msg:Message):
 async def server_user_update():
     global SVdict
     try:
-        print("[BOT.TASK] server_user_update start")
+        print(f"[BOT.TASK] server_user_update start at {GetTime()}")
         SVdict_temp = copy.deepcopy(SVdict)#深拷贝
+        log_text="[BOT.TASK] server_user_update: "
         for g,s in SVdict_temp.items():
             try:
-                now_time=GetTime()
-                print(f"[{now_time}] Upd G:{g}")#打印log信息
+                log_text+=f"({g}) "
                 # 调用api进行更新
                 ret = await server_status(g)
                 if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
@@ -491,12 +491,11 @@ async def server_user_update():
 
         # 不相同代表有删除，保存
         if SVdict_temp != SVdict:
-            with open("./log/server.json",'w',encoding='utf-8') as fw1:
-                json.dump(SVdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)
-                
-        print("[BOT.TASK] server_user_update finished")
+            await file_save("./log/server.json",SVdict)
+        # 打印log过程
+        print(log_text)
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] update_server_user_status: ```\n{traceback.format_exc()}\n```\n"
+        err_str=f"ERR! [{GetTime()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
         await bot.client.send(debug_ch,err_str)
