@@ -1,4 +1,5 @@
 # encoding: utf-8:
+import os
 import json
 import time
 import copy
@@ -18,6 +19,7 @@ bot = Bot(token=config['token'])
 Botoken=config['token']
 kook="https://www.kookapp.cn"
 headers={f'Authorization': f"Bot {Botoken}"}
+debug_ch=None
 
 # 向botmarket通信
 @bot.task.add_interval(minutes=30)
@@ -29,16 +31,12 @@ async def botmarket():
 
 #############################################################################################
 
-Debug_ch="6248953582412867"
 
 def GetTime(): #将获取当前时间封装成函数方便使用
     return time.strftime("%y-%m-%d %H:%M:%S", time.localtime())
 
 def GetDate(): #将获取当前日期成函数方便使用
     return time.strftime("%y-%m-%d", time.localtime())
-
-# 开机的时候打印一次时间，记录重启时间
-print(f"Start at: [%s]"%GetTime())
 
 # 在控制台打印msg内容，用作日志
 def logging(msg: Message):
@@ -52,7 +50,7 @@ async def alive_check(msg:Message,*arg):
     await msg.reply(f"bot alive here")
 
 # 帮助命令
-@bot.command(name='CKhelp')
+@bot.command(name='CKhelp',aliases=['ckhelp,chelp,khelp'])
 async def help(msg:Message):
     logging(msg)
     cm = CardMessage()
@@ -98,15 +96,6 @@ async def server_status(Gulid_ID:str):
 
 
 #######################################服务器昨日新增用户数量###############################################
-
-LastDay={
-    'guild':'',
-    'channel':'',
-    'user_total':'',
-    'increase':'',
-    'date':'',
-    'option':0
-}
 
 # 将文件作为全局变量打开（预加载）
 with open("./log/yesterday.json",'r',encoding='utf-8') as frla:
@@ -179,8 +168,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         cm2.append(c)
         await msg.reply(cm2)
         #发送错误信息到指定频道
-        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-        await bot.client.send(debug_channel,err_str)
+        await bot.client.send(debug_ch,err_str)
 
 
 # 手动查看服务器的昨日新增
@@ -305,8 +293,7 @@ async def yesterday_UserIncrease():
                 err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} - ```\n{traceback.format_exc()}\n```\n"
                 print(err_str)
                 #发送错误信息到指定频道
-                debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-                await bot.client.send(debug_channel,err_str)
+                await bot.client.send(debug_ch,err_str)
 
         #需要重新执行写入（更新）
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
@@ -317,8 +304,7 @@ async def yesterday_UserIncrease():
         err_str=f"ERR! [{GetTime()}] Yday_INC - ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-        await bot.client.send(debug_channel,err_str)
+        await bot.client.send(debug_ch,err_str)
     
 
 #######################################服务器在线人数更新###################################################
@@ -341,8 +327,7 @@ async def server_user_check(msg:Message):
         print(err_str)
         await msg.reply(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-        await bot.client.send(debug_channel,err_str)
+        await bot.client.send(debug_ch,err_str)
 
 # 处理转义字符
 def fb_modfiy(front:str,back:str):
@@ -501,8 +486,7 @@ async def server_user_update():
                 if "json.decoder.JSONDecodeError" in err_cur:
                     print(await response.text())
                 #发送错误信息到指定频道
-                debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-                await bot.client.send(debug_channel,err_str)
+                await bot.client.send(debug_ch,err_str)
 
         # 不相同代表有删除，保存
         if SVdict_temp != SVdict:
@@ -514,8 +498,21 @@ async def server_user_update():
         err_str=f"ERR! [{GetTime()}] update_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
-        debug_channel= await bot.client.fetch_public_channel(Debug_ch)
-        await bot.client.send(debug_channel,err_str)
+        await bot.client.send(debug_ch,err_str)
 
+# 开机任务
+@bot.task.add_date()
+async def startup_task():
+    try:
+        global debug_ch
+        debug_ch = await bot.client.fetch_public_channel(config['debug_ch'])
+        print(f"[Start] fetch debug channel success")
+    except:
+        err_cur=str(traceback.format_exc())
+        print(f"ERR ON START UP!\n{err_cur}")
+        os._exit(-1)
 
+# 开机的时候打印一次时间，记录重启时间
+print(f"[Start] at [%s]"%GetTime())
+# 开机
 bot.run()
