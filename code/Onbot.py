@@ -107,7 +107,7 @@ async def channel_update(channel_id:str,name:str):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, data=params,headers=headers) as response:
             ret1= json.loads(await response.text())
-            print(f"Option=2, Update_ch: {ret1['message']}")
+            print(f"[Option 2] Update_ch:{ret1['message']} - ch:{channel_id}")
 
 # 保存文件
 async def file_save(path:str,value):
@@ -226,79 +226,95 @@ async def td_yday_inc_check(msg:Message):
     else:
         await msg.reply(f"本服务器暂未开启`昨日新增用户`追踪器")
 
+# 函数供调用
+async def yesterday_UIC():
+    global LAdict
+    LAdict_temp = copy.deepcopy(LAdict)
+    for g,s in LAdict_temp.items():
+        print(f"[{GetTime()}] Yday_INC %s"%s)#打印log信息
+        try:# 获取服务器信息
+            ret = await server_status(g)
+            # 用户不在服务器内（bot被踢了）删除键值
+            if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
+                log_str = f"ERR! [Yday_INC] {ret}\n"
+                log_str +=f"[Yday_INC] del G:{g}"
+                del LAdict[g] # 删除服务器
+                print(log_str)
+                continue
+                
+            total=ret['data']['user_count'] # 当前服务器用户数量
+            dif= total - s['user_total'] # 文件中存着的用户数量 - 当前
+            LAdict[g]['user_total']=total # 更新文件中用户数量
+            # 更新人数增加数量
+            inc_diff = dif-s['increase']
+            LAdict[g]['increase']=dif
+            # 选项卡不为0，则执行发送
+            if s['option']!=0:
+                ch=await bot.client.fetch_public_channel(s['channel'])
+                name_str="📈：昨日变动 none"
+                send_text="昨日新增用户 ERR"
+                if dif>0:
+                    name_str=f"📈：昨日变动 {dif}↑"
+                    if inc_diff>0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}↑)\n"
+                    elif inc_diff<0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}↓)\n"
+                    else:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}-)\n"
+                elif dif<0:
+                    name_str=f"📈：昨日变动 {dif}↓"
+                    if inc_diff>0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}↑)\n"
+                    elif inc_diff<0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}↓)\n"
+                    else:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}-)\n"
+                else:
+                    name_str=f"📈：昨日变动 {dif}-"
+                    if inc_diff>0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}↑)\n"
+                    elif inc_diff<0:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}↓)\n"
+                    else:
+                        send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}-)\n"
+                
+                # 发送/更新频道名字
+                await bot.client.send(ch,send_text)
+                if s['option'] == 2:
+                    await channel_update(s['channel'],name_str)
+        except Exception as result:
+            err_str=f"ERR! [{GetTime()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
+            print(err_str)
+            #发送错误信息到指定频道
+            await bot.client.send(debug_ch,err_str)
+
+    #需要重新执行写入（更新）
+    await file_save("./log/yesterday.json",LAdict)
+    print(f"[BOT.TASK] Yday_INC finished at {GetTime()}")
+
 
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0,minute=1,timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
-    global LAdict
     try:
-        LAdict_temp = copy.deepcopy(LAdict)
-        for g,s in LAdict_temp.items():
-            now_time=GetTime()
-            print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
-            try:# 获取服务器信息
-                ret = await server_status(s['guild'])
-                # 用户不在服务器内（bot被踢了）删除键值
-                if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
-                    log_str = f"ERR! [Yday_INC] {ret}\n"
-                    log_str +=f"[Yday_INC] del G:{g}"
-                    del LAdict[g] # 删除服务器
-                    print(log_str)
-                    continue
-                    
-                total=ret['data']['user_count'] # 当前服务器用户数量
-                dif= total - s['user_total'] # 文件中存着的用户数量 - 当前
-                LAdict[g]['user_total']=total # 更新文件中用户数量
-                # 更新人数增加数量
-                inc_diff = dif-s['increase']
-                LAdict[g]['increase']=dif
-                # 选项卡不为0，则执行发送
-                if s['option']!=0:
-                    ch=await bot.client.fetch_public_channel(s['channel'])
-                    name_str="📈：昨日变动 none"
-                    send_text="昨日新增用户 ERR"
-                    if dif>0:
-                        name_str=f"📈：昨日变动 {dif}↑"
-                        if inc_diff>0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}↑)\n"
-                        elif inc_diff<0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}↓)\n"
-                        else:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↑ ({inc_diff}-)\n"
-                    elif dif<0:
-                        name_str=f"📈：昨日变动 {dif}↓"
-                        if inc_diff>0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}↑)\n"
-                        elif inc_diff<0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}↓)\n"
-                        else:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({inc_diff}-)\n"
-                    else:
-                        name_str=f"📈：昨日变动 {dif}-"
-                        if inc_diff>0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}↑)\n"
-                        elif inc_diff<0:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}↓)\n"
-                        else:
-                            send_text=f"新的一天开始啦！本服务器昨日用户变动: `{dif}`- ({inc_diff}-)\n"
-                    
-                    # 发送/更新频道名字
-                    await bot.client.send(ch,send_text)
-                    if s['option'] == 2:
-                        await channel_update(s['channel'],name_str)
-            except Exception as result:
-                err_str=f"ERR! [{GetTime()}] Yday_INC s:{s['guild']} \n```\n{traceback.format_exc()}\n```\n"
-                print(err_str)
-                #发送错误信息到指定频道
-                await bot.client.send(debug_ch,err_str)
-
-        #需要重新执行写入（更新）
-        await file_save("./log/yesterday.json",LAdict)
-        print(f"[BOT.TASK] Yday_INC finished at {GetTime()}")
+        await yesterday_UIC()
     except Exception as result:
-        err_str=f"ERR! [{GetTime()}] Yday_INC \n```\n{traceback.format_exc()}\n```\n"
+        err_str=f"ERR! [{GetTime()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
+        await bot.client.send(debug_ch,err_str)
+
+@bot.command(name='ync')
+async def yesterday_cmd(msg:Message,*arg):
+    logging(msg)
+    try:
+        if msg.author_id == config['master_id']:
+            await yesterday_UIC()
+    except Exception as result:
+        err_str=f"ERR! [{GetTime()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
+        print(err_str)
+        #发送错误信息到指定频道
+        await msg.reply(err_str)
         await bot.client.send(debug_ch,err_str)
     
 
