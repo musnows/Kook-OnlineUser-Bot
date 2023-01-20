@@ -9,15 +9,20 @@ import traceback
 from khl import Bot, Message, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types
 
-
 # 配置机器人
 with open('./config/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
+# 预加载服务器在线人数监看
+with open("./log/server.json",'r',encoding='utf-8') as frsv:
+    SVdict = json.load(frsv)
+# 预加载昨日新增用户监看
+with open("./log/yesterday.json",'r',encoding='utf-8') as frla:
+    LAdict = json.load(frla)
 # 用读取来的 config 初始化 bot，字段对应即可
 bot = Bot(token=config['token'])
 
 Botoken=config['token']
-kook="https://www.kookapp.cn"
+kook_base_url="https://www.kookapp.cn"
 headers={f'Authorization': f"Bot {Botoken}"}
 debug_ch=None
 
@@ -86,7 +91,7 @@ async def help(msg:Message):
 
 # 获取服务器用户数量用于更新
 async def server_status(Gulid_ID:str):
-    url=kook+"/api/v3/guild/user-list"
+    url=kook_base_url+"/api/v3/guild/user-list"
     params = {"guild_id":Gulid_ID}
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params,headers=headers) as response:
@@ -97,9 +102,6 @@ async def server_status(Gulid_ID:str):
 
 #######################################服务器昨日新增用户数量###############################################
 
-# 将文件作为全局变量打开（预加载）
-with open("./log/yesterday.json",'r',encoding='utf-8') as frla:
-    LAlist = json.load(frla)
 
 #设置监看并在指定频道发送信息
 @bot.command(name='adld')
@@ -110,7 +112,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         return 
 
     try:
-        global LAlist
+        global LAdict
         LastDay['guild']=msg.ctx.guild.id
         LastDay['channel']=msg.ctx.channel.id
         LastDay['option']=op # 1为启用发送,0为不启用
@@ -119,9 +121,9 @@ async def Add_YUI_ck(msg:Message,op:int=0):
         flag_op=0
         flag_sv=0
         # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-        #     LAlist = json.load(fr1)
+        #     LAdict = json.load(fr1)
         
-        for s in LAlist:
+        for s in LAdict:
             if s['guild'] == LastDay['guild']:
                 flag_sv=1
                 s['channel']=LastDay['channel']
@@ -143,7 +145,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
             ret = await server_status(LastDay['guild']) #print(ret)
             LastDay['user_total']=ret['data']['user_count']
             LastDay['increase']=0
-            LAlist.append(LastDay)
+            LAdict.append(LastDay)
             if op == 0:
                 await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您没有设置第二个参数，bot不会自动发送推送信息。可在明日用`/ldck`手动查看昨日新增，或重新操作本指令\n- 若需要在本频道开启信息推送，需要添加第二个非零数字作为参数：`/adld 1`")
             elif op == 1:
@@ -152,7 +154,7 @@ async def Add_YUI_ck(msg:Message,op:int=0):
                 await msg.reply(f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数`2`，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n- 同时将更新本频道名称为 `📈：昨日变动 变动人数`\n")
 
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-                json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+                json.dump(LAdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
 
     except Exception as result:
@@ -177,9 +179,9 @@ async def yday_inc_check(msg:Message):
     logging(msg)
 
     # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
-    #     LAlist = json.load(fr1)
-    global LAlist
-    for s in LAlist:
+    #     LAdict = json.load(fr1)
+    global LAdict
+    for s in LAdict:
         if s['guild'] == msg.ctx.guild.id and s['date']!=GetDate():
             await msg.reply(f"昨日用户变动为：{s['increase']}")
             return
@@ -194,12 +196,12 @@ async def yday_inc_check(msg:Message):
 @bot.command(name='tdld')
 async def td_yday_inc_check(msg:Message):
     logging(msg)
-    global LAlist
+    global LAdict
     emptyList = list() #空list
     # with open("./log/yesterday.json",'r',encoding='utf-8') as fr1:
     #     data = json.load(fr1)
     flag = 0 #用于判断
-    for s in LAlist:
+    for s in LAdict:
         if s['guild']==msg.ctx.guild.id:
             flag = 1
             print(f"Cancel Yday_Inc: G:{s['guild']} - C:{s['channel']}")
@@ -208,9 +210,9 @@ async def td_yday_inc_check(msg:Message):
             emptyList.append(s)
 
     #最后重新执行写入
-    LAlist=emptyList
+    LAdict=emptyList
     with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-        json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+        json.dump(LAdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
     fw1.close()
 
     if flag == 0:
@@ -220,10 +222,10 @@ async def td_yday_inc_check(msg:Message):
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0,minute=1,timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
-    global LastDay,LAlist
+    global LastDay,LAdict
     try:
-        LAlist_temp = copy.deepcopy(LAlist)
-        for s in LAlist_temp:
+        LAdict_temp = copy.deepcopy(LAdict)
+        for s in LAdict_temp:
             now_time=GetTime()
             print(f"[{now_time}] Yday_INC %s"%s)#打印log信息
             try:
@@ -231,7 +233,7 @@ async def yesterday_UserIncrease():
                 if ('该用户不在该服务器内' in ret['message']) or ret['code']!=0:
                     log_str = f"ERR! [Yday_INC] {ret}\n"
                     log_str +=f"[Yday_INC] del {s}"
-                    LAlist.remove(s)
+                    LAdict.remove(s)
                     print(log_str)
                     continue
                     
@@ -256,7 +258,7 @@ async def yesterday_UserIncrease():
                     else:
                         await bot.client.send(ch,f"新的一天开始啦！本服务器昨日用户变动: `{dif}`↓ ({dif-s['increase']}-)\n")
                 elif s['option'] == 2:
-                    url=kook+"/api/v3/channel/update"
+                    url=kook_base_url+"/api/v3/channel/update"
                     params={}
                     if dif>0:
                         params = {"channel_id":s['channel'],"name":f"📈：昨日变动 {dif}↑"}
@@ -297,7 +299,7 @@ async def yesterday_UserIncrease():
 
         #需要重新执行写入（更新）
         with open("./log/yesterday.json",'w',encoding='utf-8') as fw1:
-            json.dump(LAlist,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
+            json.dump(LAdict,fw1,indent=2,sort_keys=True, ensure_ascii=False)        
         fw1.close()
         print("[BOT.TASK] Yday_INC finished!")
     except Exception as result:
@@ -308,10 +310,6 @@ async def yesterday_UserIncrease():
     
 
 #######################################服务器在线人数更新###################################################
-
-# 预加载
-with open("./log/server.json",'r',encoding='utf-8') as frsv:
-    SVdict = json.load(frsv)
 
 # 直接查看本服务器状态
 @bot.command(name='svck')
@@ -370,7 +368,7 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
         ret = await server_status(msg.ctx.guild.id)
         total=ret['data']['user_count']
         online=ret['data']['online_count']
-        url=kook+"/api/v3/channel/update"
+        url=kook_base_url+"/api/v3/channel/update"
         params = {"channel_id":SVdict[msg.ctx.guild.id]['channel'],"name":f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"}
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=params,headers=headers) as response:
@@ -418,7 +416,7 @@ async def adsv_1(msg:Message,front:str="频道在线 ",back:str=" "):
 async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "):
     logging(msg)
     if ch != 'err':# 检查频道id是否有效
-        url_ch = kook+"/api/v3/channel/view"
+        url_ch = kook_base_url+"/api/v3/channel/view"
         params = {"target_id":ch}
         async with aiohttp.ClientSession() as session:
             async with session.get(url_ch, data=params,headers=headers) as response:
@@ -474,7 +472,7 @@ async def server_user_update():
                 
                 total=ret['data']['user_count']
                 online=ret['data']['online_count']
-                url=kook+"/api/v3/channel/update"
+                url=kook_base_url+"/api/v3/channel/update"
                 params = {"channel_id":s['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, data=params,headers=headers) as response:
