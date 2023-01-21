@@ -59,7 +59,9 @@ pip install -r reqiurements.txt
 {
     "token": "kook-bot websocket token",
     "verify_token": "",
-    "encrypt_key": ""
+    "encrypt_key": "",
+    "debug_ch":"6248953582412867",
+    "master_id":"1961572535"
 }
 ```
 
