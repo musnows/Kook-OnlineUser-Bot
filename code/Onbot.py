@@ -49,13 +49,13 @@ def logging(msg: Message):
     print(f"[{now_time}] G:{msg.ctx.guild.id} - C:{msg.ctx.channel.id} - Au:{msg.author_id}_{msg.author.username}#{msg.author.identify_num} = {msg.content}")
 
 # 查看bot状态
-@bot.command(name='alive')
+@bot.command(name='alive',case_sensitive=False)
 async def alive_check(msg:Message,*arg):
     logging(msg)
     await msg.reply(f"bot alive here")
 
 # 帮助命令
-@bot.command(name='CKhelp',aliases=['ckhelp,chelp,khelp'])
+@bot.command(name='CKhelp',case_sensitive=False)
 async def help(msg:Message):
     logging(msg)
     cm = CardMessage()
@@ -118,7 +118,7 @@ async def file_save(path:str,value):
 
 
 #设置监看并在指定频道发送信息
-@bot.command(name='adld')
+@bot.command(name='adld',case_sensitive=False)
 async def Add_YUI_ck(msg:Message,op:int=0,*arg):
     logging(msg)
     if op <0 or op >2:
@@ -191,7 +191,7 @@ async def Add_YUI_ck(msg:Message,op:int=0,*arg):
 
 
 # 手动查看服务器的昨日新增
-@bot.command(name='ldck')
+@bot.command(name='ldck',case_sensitive=False)
 async def yday_inc_check(msg:Message):
     logging(msg)
     try:
@@ -213,7 +213,7 @@ async def yday_inc_check(msg:Message):
 
 
 # 关闭服务器的昨日新增追踪器
-@bot.command(name='tdld')
+@bot.command(name='tdld',case_sensitive=False)
 async def td_yday_inc_check(msg:Message):
     logging(msg)
     global LAdict
@@ -304,7 +304,7 @@ async def yesterday_UserIncrease():
         #发送错误信息到指定频道
         await bot.client.send(debug_ch,err_str)
 
-@bot.command(name='ync')
+@bot.command(name='ync',case_sensitive=False)
 async def yesterday_cmd(msg:Message,*arg):
     logging(msg)
     try:
@@ -321,7 +321,7 @@ async def yesterday_cmd(msg:Message,*arg):
 #######################################服务器在线人数更新###################################################
 
 # 直接查看本服务器状态
-@bot.command(name='svck')
+@bot.command(name='svck',case_sensitive=False)
 async def server_user_check(msg:Message):
     logging(msg)
     try:
@@ -406,7 +406,7 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
         await msg.reply(cm2)
 
 # 手动指定频道id（适用于分组的情况）
-@bot.command(name='adsv1',aliases=['在线人数监看2'])
+@bot.command(name='adsv1',aliases=['在线人数监看1'],case_sensitive=False)
 async def adsv_1(msg:Message,front:str="频道在线 ",back:str=" "):
     logging(msg)
     # 直接执行下面的函数
@@ -415,7 +415,7 @@ async def adsv_1(msg:Message,front:str="频道在线 ",back:str=" "):
 
 
 # 手动指定频道id（适用于分组的情况）
-@bot.command(name='adsv2',aliases=['在线人数监看2'])
+@bot.command(name='adsv2',aliases=['在线人数监看2'],case_sensitive=False)
 async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "):
     logging(msg)
     if ch != 'err':# 检查频道id是否有效
@@ -438,7 +438,7 @@ async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "
 
 
 # 取消在线人数监看
-@bot.command(name='tdsv',aliases=['退订在线人数监看'])
+@bot.command(name='tdsv',aliases=['退订在线人数监看'],case_sensitive=False)
 async def Cancel_server_user_update(msg:Message):
     logging(msg)
     global SVdict
