@@ -285,6 +285,9 @@ async def yesterday_UIC():
         except Exception as result:
             err_str=f"ERR! [{GetTime()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
             print(err_str)
+            if "guild_id不存在" in err_str or "没有权限" in err_str:
+                del LAdict[g] # 删除服务器
+                print(f"[{GetTime()}] Yday_INC del LAdict[{g}]")
             #发送错误信息到指定频道
             await bot.client.send(debug_ch,err_str)
 
@@ -486,6 +489,9 @@ async def server_user_update():
                 print(err_str)
                 if "json.decoder.JSONDecodeError" in err_cur:
                     print(await response.text())
+                elif "guild_id不存在" in err_str or "没有权限" in err_str:
+                    del SVdict[g] # 删除服务器
+                    print(f"[{GetTime()}] server_user_update del SVdict[{g}]")
                 #发送错误信息到指定频道
                 await bot.client.send(debug_ch,err_str)
 
