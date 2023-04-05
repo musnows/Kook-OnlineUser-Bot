@@ -19,15 +19,16 @@ with open("./log/server.json",'r',encoding='utf-8') as frsv:
 with open("./log/yesterday.json",'r',encoding='utf-8') as frla:
     LAdict = json.load(frla)
 # 用读取来的 config 初始化 bot，字段对应即可
-bot = Bot(token=config['token'])
+bot = Bot(token=config['token']) # websocket
+# bot = Bot(cert=Cert(token=config['token'],verify_token=config['verify_token'],encrypt_key=config['encrypt'])) # webhook
 
 Botoken=config['token']
 kook_base_url="https://www.kookapp.cn"
 headers={f'Authorization': f"Bot {Botoken}"}
 debug_ch=None
 
-# 向botmarket通信
-@bot.task.add_interval(minutes=30)
+# 向botmarket通信,如果你的机器人没有在bm上线，请删除or注释本task
+@bot.task.add_interval(minutes=20)
 async def botmarket():
     api ="http://bot.gekj.net/api/v1/online.bot"
     headers = {'uuid':'8b3b4c14-d20c-4a23-9c71-da4643b50262'}
