@@ -60,7 +60,7 @@ async def alive_check(msg:Message,*arg):
 async def help(msg:Message):
     logging(msg)
     cm = CardMessage()
-    c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'),Module.Context(Element.Text("由MOAR#7134开发，开源代码见 [Github](https://github.com/Aewait/Kook-OnlineUser-Bot)",Types.Text.KMD)))
+    c3 = Card(Module.Header('目前在线/总人数小助手支持的指令如下'),Module.Context(Element.Text("由muxue开发，开源代码见 [Github](https://github.com/musnows/Kook-OnlineUser-Bot)",Types.Text.KMD)))
     c3.append(Module.Divider())
     #实现卡片的markdown文本
     c3.append(Module.Header('服务器在线/总人数监看'))
@@ -81,7 +81,7 @@ async def help(msg:Message):
     help_Str3+="`/adld 2`则会向当前频道发送消息的同时，更新频道名字\n"
     help_Str3+="`/ldck` 手动查看本服务器的昨日新增用户数量\n"
     help_Str3+="`/tdld` 关闭本服务器的`昨日新增用户`追踪器\n"
-    help_Str3+="``昨日新增用户`追踪器更新文字说明：格式为 `10↑ (20↑)`，其中第一个数字为昨日新增用户的数量，第二个数字是相比前天，用户增长的变动"
+    help_Str3+="`昨日新增用户`追踪器更新文字说明：格式为 `10↑ (20↑)`，其中第一个数字为昨日新增用户的数量，第二个数字是相比前天，用户增长的变动"
     c3.append(Module.Section(Element.Text(help_Str3,Types.Text.KMD)))
     c3.append(Module.Divider())
     c3.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
