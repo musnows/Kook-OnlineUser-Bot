@@ -6,7 +6,7 @@ import copy
 import aiohttp
 import traceback
 
-from khl import Bot, Message, EventTypes
+from khl import Bot, Message,Cert, EventTypes,Channel
 from khl.card import CardMessage, Card, Module, Element, Types
 
 # 配置机器人
@@ -23,9 +23,13 @@ bot = Bot(token=config['token']) # websocket
 # bot = Bot(cert=Cert(token=config['token'],verify_token=config['verify_token'],encrypt_key=config['encrypt'])) # webhook
 
 Botoken=config['token']
+"""机器人token"""
 kook_base_url="https://www.kookapp.cn"
-headers={f'Authorization': f"Bot {Botoken}"}
-debug_ch=None
+"""kook api基础url"""
+kook_headers={f'Authorization': f"Bot {Botoken}"}
+"""kook api基础kook_headers"""
+debug_ch:Channel
+"""日志频道"""
 
 # 向botmarket通信,如果你的机器人没有在bm上线，请删除or注释本task
 @bot.task.add_interval(minutes=20)
@@ -96,7 +100,7 @@ async def server_status(Gulid_ID:str):
     url=kook_base_url+"/api/v3/guild/user-list"
     params = {"guild_id":Gulid_ID}
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params,headers=headers) as response:
+        async with session.get(url, params=params,headers=kook_headers) as response:
             ret1= json.loads(await response.text())
             #print(ret1)
             return ret1
@@ -106,7 +110,7 @@ async def channel_update(channel_id:str,name:str):
     url=kook_base_url+"/api/v3/channel/update"
     params = {"channel_id":channel_id,"name":name}
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, data=params,headers=headers) as response:
+        async with session.post(url, data=params,headers=kook_headers) as response:
             ret1= json.loads(await response.text())
             print(f"[Option 2] Update_ch:{ret1['message']} - ch:{channel_id}")
 
@@ -378,7 +382,7 @@ async def Add_server_user_update(msg:Message,ch:str,front:str,back:str):
         url=kook_base_url+"/api/v3/channel/update"
         params = {"channel_id":SVdict[msg.ctx.guild.id]['channel'],"name":f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"}
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, data=params,headers=headers) as response:
+            async with session.post(url, data=params,headers=kook_headers) as response:
                 ret1= json.loads(await response.text())
         
         # 执行不同的提示信息
@@ -426,7 +430,7 @@ async def adsv_2(msg:Message,ch:str='err',front:str="频道在线 ",back:str=" "
         url_ch = kook_base_url+"/api/v3/channel/view"
         params = {"target_id":ch}
         async with aiohttp.ClientSession() as session:
-            async with session.get(url_ch, data=params,headers=headers) as response:
+            async with session.get(url_ch, data=params,headers=kook_headers) as response:
                 ret= json.loads(await response.text())
         if ret['code']!=0: #代表频道是不正确的
             await msg.reply(f"频道id参数不正确：`{ret['message']}`\n请确认您输入的是`开发者模式`下复制的`频道id`，而不是频道的名字/服务器id！有任何问题，请点击[按钮](https://kook.top/gpbTwZ)加入帮助频道咨询")
@@ -482,7 +486,7 @@ async def server_user_update():
                 url=kook_base_url+"/api/v3/channel/update"
                 params = {"channel_id":s['channel'],"name":f"{s['front']}{online}/{total}{s['back']}"}
                 async with aiohttp.ClientSession() as session:
-                    async with session.post(url, data=params,headers=headers) as response:
+                    async with session.post(url, data=params,headers=kook_headers) as response:
                             ret1= json.loads(await response.text())
             except Exception as result:
                 err_cur=str(traceback.format_exc()) 
@@ -492,8 +496,10 @@ async def server_user_update():
                     print(await response.text())
                 elif "guild_id不存在" in err_str or "没有权限" in err_str:
                     del SVdict[g] # 删除服务器
-                    print(f"[{GetTime()}] server_user_update del SVdict[{g}]")
-                #发送错误信息到指定频道
+                    print(f"[{GetTime()}] server_user_update | del SVdict[{g}]")
+                elif 'connect to' in err_str: # 网络问题
+                    print(f"[{GetTime()}] server_user_update | {err_str}")
+                # 发送错误信息到指定频道
                 await bot.client.send(debug_ch,err_str)
 
         # 不相同代表有删除，保存
@@ -502,6 +508,9 @@ async def server_user_update():
         # 打印log过程
         print(log_text)
     except Exception as result:
+        if 'connect to' in str(result): # 网络问题
+            return print(f"[{GetTime()}] server_user_update_status | {str(result)}")
+        # 打印错误
         err_str=f"ERR! [{GetTime()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
