@@ -5,6 +5,7 @@ import time
 import copy
 import aiohttp
 import traceback
+import sys
 
 from khl import Bot, Message, Cert, EventTypes, Channel,PrivateMessage
 from khl.card import CardMessage, Card, Module, Element, Types
@@ -45,6 +46,7 @@ async def botmarket():
     headers = {'uuid': '8b3b4c14-d20c-4a23-9c71-da4643b50262'}
     async with aiohttp.ClientSession() as session:
         await session.post(api, headers=headers)
+    log_flush()
 
 
 #############################################################################################
@@ -58,6 +60,17 @@ def GetDate():  #将获取当前日期成函数方便使用
     return time.strftime("%y-%m-%d", time.localtime())
 
 
+def log_dup(path: str = './log/log.txt'):
+  """设置日志文件的重定向"""
+  file = open(path, 'a')
+  sys.stdout = file
+  sys.stderr = file
+
+def log_flush():
+  """刷新缓冲区"""
+  sys.stdout.flush()  # 刷新缓冲区
+  sys.stderr.flush()  # 刷新缓冲区
+
 def logging(msg: Message):
     """# 在控制台打印msg内容，用作日志"""
     now_time = GetTime()
@@ -68,6 +81,7 @@ def logging(msg: Message):
     print(
         f"[{now_time}] G:{guild_id} - C:{ch_id} - Au:{msg.author_id}_{msg.author.username}#{msg.author.identify_num} = {msg.content}"
     )
+    log_flush()
 
 
 # 查看bot状态
@@ -352,6 +366,7 @@ async def yesterday_UIC():
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0, minute=1, timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
+    log_flush()
     try:
         await yesterday_UIC()
     except Exception as result:
@@ -608,14 +623,19 @@ async def startup_task():
         global debug_ch
         debug_ch = await bot.client.fetch_public_channel(config['debug_ch'])
         print(f"[Start] fetch debug channel success")
+        log_flush()
     except:
         err_cur = str(traceback.format_exc())
         print(f"ERR ON START UP!\n{err_cur}")
+        log_flush()
         os._exit(-1)
 
 # 开机
 if __name__ == '__main__':
     # 开机的时候打印一次时间，记录重启时间
     print(f"[Start] at [%s]" % GetTime())
+    # logdup
+    log_dup() # 如果需要重定向日志文件的输出，不在控制台打印，则使用这个
+    print(f"[Start.dup] at [%s]" % GetTime()) # 再打印一次启动日志
     # 开机
     bot.run()
