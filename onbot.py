@@ -634,8 +634,5 @@ async def startup_task():
 if __name__ == '__main__':
     # 开机的时候打印一次时间，记录重启时间
     print(f"[Start] at [%s]" % GetTime())
-    # logdup
-    log_dup() # 如果需要重定向日志文件的输出，不在控制台打印，则使用这个
-    print(f"[Start.dup] at [%s]" % GetTime()) # 再打印一次启动日志
     # 开机
     bot.run()
