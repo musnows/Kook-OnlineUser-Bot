@@ -59,17 +59,18 @@ pip install -r reqiurements.txt
 {
     "token": "kook-bot websocket token",
     "verify_token": "",
-    "encrypt_key": ""
+    "encrypt_key": "",
+    "debug_ch":"6248953582412867",
+    "master_id":"1961572535"
 }
 ```
 
 ### 3.2 log
 
-在 `code/log` 路径中添加两个文件，`server.json`&`yesterday.json`
+在 `code/log` 路径中添加两个文件，`server.json`&`yesterday.json`，均初始化为空dict即可
 
 ```
-server.json    初始化为 {}
-yesterday.json 初始化为 []
+{}
 ```
 
 其余无须配置，bot会自动创建用于记录的键值对并保存到文件中；
