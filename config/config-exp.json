@@ -1,0 +1,9 @@
+{
+    "token": "webhook/websocket token",
+    "verify_token":"webhook only",
+    "encrypt":"webhook only",
+    "webhook_port": 5000,
+    "ws":false,
+    "debug_ch":"text channel for sending debug msg",
+    "master_id":"developer user id"
+}
