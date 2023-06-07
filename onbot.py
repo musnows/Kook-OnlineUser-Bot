@@ -350,13 +350,16 @@ async def yesterday_UIC():
                 if s['option'] == 2:
                     await channel_update(s['channel'], name_str)
         except Exception as result:
-            err_str = f"ERR! [{GetTime()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
-            print(err_str)
-            if "guild_id不存在" in err_str or "没有权限" in err_str:
+            err_str = traceback.format_exc()
+            if "guild_id不存在" in err_str or "权限" in err_str:
                 del LAdict[g]  # 删除服务器
-                print(f"[{GetTime()}] Yday_INC del LAdict[{g}]")
-            #发送错误信息到指定频道
-            await bot.client.send(debug_ch, err_str)
+                print(f"[{GetTime()}] Yday_INC del LAdict[{g}] | {traceback.format_exc()}")
+            elif 'connect' in err_str: # 网络问题
+                print(f"[{GetTime()}] Yday_INC s:{g} | {str(result)}")
+            else:
+                err_str = f"ERR! [{GetTime()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
+                await bot.client.send(debug_ch, err_str)# 发送错误信息到指定频道
+                continue # 继续执行
 
     #需要重新执行写入（更新）
     await file_save("./log/yesterday.json", LAdict)
@@ -587,18 +590,17 @@ async def server_user_update():
                         ret1 = json.loads(await response.text())
             except Exception as result:
                 err_cur = str(traceback.format_exc())
-                err_str = f"ERR! [{GetTime()}] update_server_user_status:{g}\n```\n{err_cur}\n```\n"
-                print(err_str)
                 if "json.decoder.JSONDecodeError" in err_cur:
-                    print(await response.text())
-                elif "guild_id不存在" in err_str or "没有权限" in err_str:
+                    print(f"[{GetTime()}] server_user_update | G:{g} | {await response.text()}") # 打印结果字符串
+                elif "guild_id不存在" in err_cur or "权限" in err_cur:
                     del SVdict[g]  # 删除服务器
-                    print(
-                        f"[{GetTime()}] server_user_update | del SVdict[{g}]")
-                elif 'connect to' in err_str:  # 网络问题
-                    print(f"[{GetTime()}] server_user_update | {err_str}")
-                # 发送错误信息到指定频道
-                await bot.client.send(debug_ch, err_str)
+                    print(f"[{GetTime()}] server_user_update | del SVdict[{g}] | {str(result)}")
+                elif 'connect' in err_cur:  # 网络问题
+                    print(f"[{GetTime()}] server_user_update | {str(result)}")
+                else:
+                    err_str = f"ERR! [{GetTime()}] server_user_update:{g}\n```\n{traceback.format_exc()}\n```\n"
+                    await bot.client.send(debug_ch, err_str)# 发送错误信息到指定频道
+                    continue # 继续执行
 
         # 不相同代表有删除，保存
         if SVdict_temp != SVdict:
@@ -607,9 +609,8 @@ async def server_user_update():
         print(log_text)
     except Exception as result:
         if 'connect to' in str(result):  # 网络问题
-            return print(
-                f"[{GetTime()}] server_user_update_status | {str(result)}")
-        # 打印错误
+            return print(f"[{GetTime()}] server_user_update_status | {str(result)}")
+        # 打印完整错误
         err_str = f"ERR! [{GetTime()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
         print(err_str)
         #发送错误信息到指定频道
