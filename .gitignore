@@ -1,2 +1,5 @@
 config.json
+log/
+*.log
+*.log.*
 code/log
