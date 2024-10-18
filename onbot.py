@@ -147,6 +147,16 @@ async def server_status(Gulid_ID: str):
             #print(ret1)
             return ret1
 
+# 通过json服务器小工具获取当前在线人数
+async def server_alive_count_weidget(guild_id:str):
+    url = kook_base_url + f"/api/guilds/{guild_id}/widget.json"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=kook_headers) as response:
+            ret = {}
+            # 如果服务器没有开小工具会返回403，不能加载json
+            if response.status == 200:
+                ret = json.loads(await response.text())
+            return ret
 
 # 更新频道名字
 async def channel_update(channel_id: str, name: str):
@@ -404,7 +414,14 @@ async def server_user_check(msg: Message):
         ret = await server_status(msg.ctx.guild.id)
         total = ret['data']['user_count']
         online = ret['data']['online_count']
-        await msg.reply(f"当前服务器用户状态为：{online}/{total}")
+        text = f"当前服务器用户状态为：{online}/{total}"
+        # 用服务器小工具获取更加准确的服务器在线人数
+        ret = await server_alive_count_weidget(msg.ctx.guild.id)
+        if ret and 'online_count' in ret:
+            print(f"{msg.ctx.guild.id} | online count old:{online} new:{ret['online_count']}")
+            text += f"\n服务器小工具获取到的在线人数：{ret['online_count']}"
+        
+        await msg.reply(text)
     except Exception as result:
         err_str = f"ERR! [{GetTime()}] check_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         print(err_str)
