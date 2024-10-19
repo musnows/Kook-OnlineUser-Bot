@@ -1,11 +1,9 @@
 # encoding: utf-8:
 import os
-import json
 import copy
-import aiohttp
 import traceback
 
-from khl import Message, Channel, PrivateMessage
+from khl import Message, Channel
 from khl.card import CardMessage, Card, Module, Element, Types
 
 from utils.file.Files import config, SVdict, LAdict, bot, save_all_file
@@ -79,7 +77,7 @@ async def help(msg: Message):
 
 #设置监看并在指定频道发送信息
 @bot.command(name='adld', case_sensitive=False)
-async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
+async def add_yesterday_user_increase_task_cmd(msg: Message, op: int = 0, *arg):
     log_msg(msg)
     if op < 0 or op > 2:
         await msg.reply(f"选项参数错误，目前只支持 \n0:不推送信息\n1:在本频道推送信息\n2:推送信息的同时修改本频道名")
@@ -149,22 +147,15 @@ async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
     except Exception as result:
         err_str = f"ERR! [{get_time()}] /adld - {result}"
         _log.exception(f"[ERR] err in command /adld | uid:{msg.author_id}")
-        cm2 = CardMessage()
-        c = Card(Module.Header(f"很抱歉，发生了一些错误"))
-        c.append(Module.Divider())
-        c.append(Module.Section(f"{err_str}\n\n您可能需要重新设置本频道的追踪器"))
-        c.append(Module.Divider())
-        c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
-                    Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
-        cm2.append(c)
-        await msg.reply(cm2)
+        cm = await get_help_card_msg(err_str,"您可能需要重新设置本服务器的追踪器")
+        await msg.reply(cm)
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
 
 
 # 手动查看服务器的昨日新增
 @bot.command(name='ldck', case_sensitive=False)
-async def yday_inc_check(msg: Message):
+async def yesterday_user_increase_check_cmd(msg: Message):
     log_msg(msg)
     try:
         global LAdict
@@ -186,7 +177,7 @@ async def yday_inc_check(msg: Message):
 
 # 关闭服务器的昨日新增追踪器
 @bot.command(name='tdld', case_sensitive=False)
-async def td_yday_inc_check(msg: Message):
+async def remove_yesterday_user_increase_task_cmd(msg: Message):
     log_msg(msg)
     global LAdict
     if msg.ctx.guild.id in LAdict:
@@ -200,7 +191,7 @@ async def td_yday_inc_check(msg: Message):
 
 
 # 函数供调用
-async def yesterday_UIC():
+async def yesterday_user_increase_func():
     global LAdict
     LAdict_temp = copy.deepcopy(LAdict)
     for g, s in LAdict_temp.items():
@@ -254,7 +245,8 @@ async def yesterday_UIC():
                 # 发送/更新频道名字
                 await bot.client.send(ch, send_text)
                 if s['option'] == 2:
-                    await channel_update(s['channel'], name_str)
+                    ret = await channel_update(s['channel'], name_str)
+                    _log.info(f"[Option 2] Update_ch:{ret['message']} - ch:{s['channel']}")
         except Exception as result:
             err_str = traceback.format_exc()
             if "guild_id不存在" in err_str or "权限" in err_str:
@@ -275,9 +267,9 @@ async def yesterday_UIC():
 
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0, minute=1, timezone="Asia/Shanghai")
-async def yesterday_UserIncrease():
+async def yesterday_user_increase_task():
     try:
-        await yesterday_UIC()
+        await yesterday_user_increase_func()
     except Exception as result:
         err_str = f"ERR! [{get_time()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
         _log.exception("[ERR] error in yesterday_UserIncrease task")
@@ -286,14 +278,17 @@ async def yesterday_UserIncrease():
 
 
 @bot.command(name='ync', case_sensitive=False)
-async def yesterday_cmd(msg: Message, *arg):
+async def yesterday_user_increase_task_tirrger_cmd(msg: Message, *arg):
+    """主动执行昨日新增用户检查task的管理员命令。ß"""
     log_msg(msg)
     try:
         if msg.author_id == config['master_id']:
-            await yesterday_UIC()
+            _log.info(f"uid:{msg.author_id} | trigger yesterday_user_increase_func by master user | start")
+            await yesterday_user_increase_func()
+            _log.info(f"uid:{msg.author_id} | trigger yesterday_user_increase_func by master user | end")
     except Exception as result:
         err_str = f"ERR! [{get_time()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
-        _log.exception("[ERR] error in /ync yesterday_cmd")
+        _log.exception("[ERR] error in /ync yesterday_user_increase_task_tirrger_cmd")
         #发送错误信息到指定频道
         await msg.reply(err_str)
         await bot.client.send(debug_ch, err_str)
@@ -302,7 +297,7 @@ async def yesterday_cmd(msg: Message, *arg):
 #######################################服务器在线人数更新###################################################
 
 
-# 直接查看本服务器状态
+# 直接查看本服务器状态,在线人数和总人数
 @bot.command(name='svck', case_sensitive=False)
 async def server_user_check(msg: Message):
     log_msg(msg)
@@ -314,20 +309,20 @@ async def server_user_check(msg: Message):
         # 用服务器小工具获取更加准确的服务器在线人数
         ret = await server_alive_count_weidget(msg.ctx.guild.id)
         if ret and 'online_count' in ret:
-            _log.info(f"{msg.ctx.guild.id} | online count old:{online} new:{ret['online_count']}")
+            _log.info(f"{msg.ctx.guild.id} | online count api:{online} json-widget:{ret['online_count']}")
             text += f"\n服务器小工具获取到的在线人数：{ret['online_count']}"
         
-        await msg.reply(text)
+        await msg.reply(await get_card_msg(text))
     except Exception as result:
         err_str = f"ERR! [{get_time()}] check_server_user_status: ```\n{traceback.format_exc()}\n```\n"
         _log.exception(f"[ERR] error in /svck command | uid:{msg.author_id}")
-        await msg.reply(err_str)
+        await msg.reply(await get_help_card_msg(err_str))
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
 
 
 # 处理转义字符
-def fb_modfiy(front: str, back: str):
+def format_front_and_back_text(front: str, back: str):
     front = front.replace('\\', '')
     back = back.replace('\\', '')
 
@@ -335,7 +330,7 @@ def fb_modfiy(front: str, back: str):
 
 
 # 设置在线人数监看
-async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
+async def add_server_user_update_task_func(msg: Message, ch: str, front: str, back: str):
     try:
         global SVdict
         #用两个flag来分别判断服务器和需要更新的频道是否相同
@@ -352,7 +347,7 @@ async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
         SVdict[msg.ctx.guild.id]['back'] = back
 
         #处理转义字符
-        mstr = fb_modfiy(SVdict[msg.ctx.guild.id]['front'],
+        mstr = format_front_and_back_text(SVdict[msg.ctx.guild.id]['front'],
                          SVdict[msg.ctx.guild.id]['back'])
         SVdict[msg.ctx.guild.id]['front'] = mstr['fr']
         SVdict[msg.ctx.guild.id]['back'] = mstr['ba']
@@ -361,18 +356,11 @@ async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
         ret = await server_status(msg.ctx.guild.id)
         total = ret['data']['user_count']
         online = ret['data']['online_count']
-        url = kook_base_url + "/api/v3/channel/update"
-        params = {
-            "channel_id":
-            SVdict[msg.ctx.guild.id]['channel'],
-            "name":
-            f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, data=params,
-                                    headers=kook_headers) as response:
-                ret1 = json.loads(await response.text())
 
+        channel_id = SVdict[msg.ctx.guild.id]['channel']
+        channel_name = f"{SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"
+        ret = await channel_update(channel_id, channel_name)
+        _log.debug(f"update channel {channel_id} as [{channel_name}]")
         # 执行不同的提示信息
         if flag_gu == 1 and flag_ch == 1:
             await msg.reply(f"服务器在线人数监看格式已更新！\n前缀 [{front}]\n后缀 [{back}]")
@@ -391,43 +379,27 @@ async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
     except Exception as result:
         err_str = f"[adsv] Au:{msg.author_id}\n```\n{traceback.format_exc()}\n```"
         _log.exception("[ERR] error in Add_server_user_update ")
-        cm2 = CardMessage()
-        c = Card(Module.Header(f"很抱歉，发生了一些错误"))
-        c.append(Module.Divider())
-        c.append(Module.Section(f"{err_str}\n\n您可能需要重新设置本频道的监看事件"))
-        c.append(Module.Divider())
-        c.append(
-            Module.Section(
-                '有任何问题，请加入帮助服务器与我联系',
-                Element.Button('帮助', 'https://kook.top/gpbTwZ',
-                               Types.Click.LINK)))
-        cm2.append(c)
-        await msg.reply(cm2)
+        await msg.reply(await get_help_card_msg(err_str,"您可能需要重新设置本频道的监看事件"))
 
 
 # 手动指定频道id（适用于分组的情况）
 @bot.command(name='adsv1', aliases=['在线人数监看1'], case_sensitive=False)
-async def adsv_1(msg: Message, front: str = "频道在线 ", back: str = " "):
+async def adsv_1_cmd(msg: Message, front: str = "频道在线 ", back: str = " "):
     log_msg(msg)
     # 直接执行下面的函数
     ch = msg.ctx.channel.id
-    await Add_server_user_update(msg, ch, front, back)
+    await add_server_user_update_task_func(msg, ch, front, back)
 
 
 # 手动指定频道id（适用于分组的情况）
 @bot.command(name='adsv2', aliases=['在线人数监看2'], case_sensitive=False)
-async def adsv_2(msg: Message,
+async def adsv_2_cmd(msg: Message,
                  ch: str = 'err',
                  front: str = "频道在线 ",
                  back: str = " "):
     log_msg(msg)
     if ch != 'err':  # 检查频道id是否有效
-        url_ch = kook_base_url + "/api/v3/channel/view"
-        params = {"target_id": ch}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url_ch, data=params,
-                                   headers=kook_headers) as response:
-                ret = json.loads(await response.text())
+        ret = await channel_view(ch)
         if ret['code'] != 0:  #代表频道是不正确的
             await msg.reply(
                 f"频道id参数不正确：`{ret['message']}`\n请确认您输入的是`开发者模式`下复制的`频道id`，而不是频道的名字/服务器id！有任何问题，请点击[按钮](https://kook.top/gpbTwZ)加入帮助频道咨询"
@@ -440,22 +412,26 @@ async def adsv_2(msg: Message,
         return
 
     #过了上面的内容之后，执行下面的函数
-    await Add_server_user_update(msg, ch, front, back)
+    await add_server_user_update_task_func(msg, ch, front, back)
 
 
 # 取消在线人数监看
 @bot.command(name='tdsv', aliases=['退订在线人数监看'], case_sensitive=False)
-async def Cancel_server_user_update(msg: Message):
-    log_msg(msg)
-    global SVdict
-    if msg.ctx.guild.id in SVdict:
-        await msg.reply(f"已成功取消本服务器的在线人数监看")
-        # 保存到文件
-        del SVdict[msg.ctx.guild.id]
-        SVdict.save()
-        _log.info(f"tdsv - Cancel: G:{msg.ctx.guild.id}")
-    else:  # 不存在
-        await msg.reply(f"本服务器暂未开启在线人数监看")
+async def cancel_server_user_update_cmd(msg: Message):
+    try:
+        log_msg(msg)
+        global SVdict
+        if msg.ctx.guild.id in SVdict:
+            await msg.reply(f"已成功取消本服务器的在线人数监看")
+            # 保存到文件
+            del SVdict[msg.ctx.guild.id]
+            SVdict.save()
+            _log.info(f"tdsv - Cancel: G:{msg.ctx.guild.id}")
+        else:  # 不存在
+            await msg.reply(f"本服务器暂未开启在线人数监看")
+    except:
+        _log.exception(f"uid:{msg.author_id} | err in tdsv cmd")
+        await msg.reply(await get_help_card_msg(f"```\n{traceback.format_exc()}\n```"))
 
 
 # 定时更新服务器的在线用户/总用户状态
@@ -480,20 +456,11 @@ async def server_user_update():
 
                 total = ret['data']['user_count']
                 online = ret['data']['online_count']
-                url = kook_base_url + "/api/v3/channel/update"
-                params = {
-                    "channel_id": s['channel'],
-                    "name": f"{s['front']}{online}/{total}{s['back']}"
-                }
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(url,
-                                            data=params,
-                                            headers=kook_headers) as response:
-                        ret1 = json.loads(await response.text())
+                await channel_update(s['channel'], f"{s['front']}{online}/{total}{s['back']}")
             except Exception as result:
                 err_cur = str(traceback.format_exc())
                 if "json.decoder.JSONDecodeError" in err_cur:
-                    _log.error(f"server_user_update | G:{g} | {await response.text()}") # 打印结果字符串
+                    _log.error(f"server_user_update | G:{g} | json.decoder.JSONDecodeError")
                 elif "guild_id不存在" in err_cur or "权限" in err_cur:
                     del SVdict[g]  # 删除服务器
                     _log.error(f"server_user_update | del SVdict[{g}] | {str(result)}")
@@ -516,7 +483,7 @@ async def server_user_update():
         err_str = f"ERR! [{get_time()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
         _log.exception("[ERR] err in update_server_user_status")
         #发送错误信息到指定频道
-        await bot.client.send(debug_ch, err_str)
+        await bot.client.send(debug_ch, await get_card_msg(err_str))
 
 
 @bot.task.add_interval(minutes=4)
@@ -524,7 +491,7 @@ async def save_file_task():
     """定时保存所有文件"""
     try:
         await save_all_file()
-        _log.info(f"save file task finished at {get_time()}")
+        _log.debug(f"save file task finished at {get_time()}")
     except:
         _log.critical(f"[FATAL] save file task failed!\n{traceback.format_exc()}")
 
