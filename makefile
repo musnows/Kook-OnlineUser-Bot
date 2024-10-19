@@ -4,4 +4,4 @@ ps:
 
 .PHONY:run
 run:
-	nohup python3.10 -u onbot.py >> ./bot.out 2>&1 &
+	nohup python3.10 -u onbot.py >> /dev/null 2>&1 &

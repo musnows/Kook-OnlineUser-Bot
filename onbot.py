@@ -1,100 +1,36 @@
 # encoding: utf-8:
 import os
 import json
-import time
 import copy
 import aiohttp
 import traceback
-import sys
 
-from khl import Bot, Message, Cert, EventTypes, Channel,PrivateMessage
+from khl import Message, Channel, PrivateMessage
 from khl.card import CardMessage, Card, Module, Element, Types
 
-# 配置机器人
-with open('./config/config.json', 'r', encoding='utf-8') as f:
-    config = json.load(f)
-# 预加载服务器在线人数监看
-with open("./log/server.json", 'r', encoding='utf-8') as frsv:
-    SVdict = json.load(frsv)
-# 预加载昨日新增用户监看
-with open("./log/yesterday.json", 'r', encoding='utf-8') as frla:
-    LAdict = json.load(frla)
-# 用读取来的 config 初始化 bot，字段对应即可
-bot = Bot(token=config['token'])  # websocket
-"""main bot"""
-if not config['ws']:
-    print(f"[BOT] using webhook at port:{config['webhook_port']}")
-    bot = Bot(cert=Cert(token=config['token'],
-                        verify_token=config['verify_token'],
-                        encrypt_key=config['encrypt']),
-              port=config['webhook_port'])  # webhook
+from utils.file.Files import config, SVdict, LAdict, bot, save_all_file
+from utils.Logging import _log, log_msg
+from utils.GTime import get_time, get_date
+from utils.KookApi import *
 
-Botoken = config['token']
-"""机器人token"""
-kook_base_url = "https://www.kookapp.cn"
-"""kook api基础url"""
-kook_headers = {f'Authorization': f"Bot {Botoken}"}
-"""kook api基础kook_headers"""
 debug_ch: Channel
 """日志频道"""
-
-
-# 向botmarket通信,如果你的机器人没有在bm上线，请删除or注释本task
-@bot.task.add_interval(minutes=20)
-async def botmarket():
-    api = "http://bot.gekj.net/api/v1/online.bot"
-    headers = {'uuid': '8b3b4c14-d20c-4a23-9c71-da4643b50262'}
-    async with aiohttp.ClientSession() as session:
-        await session.post(api, headers=headers)
-    log_flush()
 
 
 #############################################################################################
 
 
-def GetTime():  #将获取当前时间封装成函数方便使用
-    return time.strftime("%y-%m-%d %H:%M:%S", time.localtime())
-
-
-def GetDate():  #将获取当前日期成函数方便使用
-    return time.strftime("%y-%m-%d", time.localtime())
-
-
-def log_dup(path: str = './log/log.txt'):
-  """设置日志文件的重定向"""
-  file = open(path, 'a')
-  sys.stdout = file
-  sys.stderr = file
-
-def log_flush():
-  """刷新缓冲区"""
-  sys.stdout.flush()  # 刷新缓冲区
-  sys.stderr.flush()  # 刷新缓冲区
-
-def logging(msg: Message):
-    """# 在控制台打印msg内容，用作日志"""
-    now_time = GetTime()
-    guild_id,ch_id = "pm","pm"
-    if not isinstance(msg,PrivateMessage):
-        guild_id = msg.ctx.guild.id
-        ch_id = msg.ctx.channel.id
-    print(
-        f"[{now_time}] G:{guild_id} - C:{ch_id} - Au:{msg.author_id}_{msg.author.username}#{msg.author.identify_num} = {msg.content}"
-    )
-    log_flush()
-
-
 # 查看bot状态
 @bot.command(name='alive', case_sensitive=False)
 async def alive_check(msg: Message, *arg):
-    logging(msg)
+    log_msg(msg)
     await msg.reply(f"bot alive here")
 
 
 # 帮助命令
 @bot.command(name='CKhelp', case_sensitive=False)
 async def help(msg: Message):
-    logging(msg)
+    log_msg(msg)
     cm = CardMessage()
     c3 = Card(
         Module.Header('目前在线/总人数小助手支持的指令如下'),
@@ -136,43 +72,6 @@ async def help(msg: Message):
     await msg.reply(cm)
 
 
-# 获取服务器用户数量用于更新
-async def server_status(Gulid_ID: str):
-    url = kook_base_url + "/api/v3/guild/user-list"
-    params = {"guild_id": Gulid_ID}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params,
-                               headers=kook_headers) as response:
-            ret1 = json.loads(await response.text())
-            #print(ret1)
-            return ret1
-
-# 通过json服务器小工具获取当前在线人数
-async def server_alive_count_weidget(guild_id:str):
-    url = kook_base_url + f"/api/guilds/{guild_id}/widget.json"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=kook_headers) as response:
-            ret = {}
-            # 如果服务器没有开小工具会返回403，不能加载json
-            if response.status == 200:
-                ret = json.loads(await response.text())
-            return ret
-
-# 更新频道名字
-async def channel_update(channel_id: str, name: str):
-    url = kook_base_url + "/api/v3/channel/update"
-    params = {"channel_id": channel_id, "name": name}
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, data=params,
-                                headers=kook_headers) as response:
-            ret1 = json.loads(await response.text())
-            print(f"[Option 2] Update_ch:{ret1['message']} - ch:{channel_id}")
-
-
-# 保存文件
-async def file_save(path: str, value):
-    with open(path, 'w', encoding='utf-8') as fw1:
-        json.dump(value, fw1, indent=2, sort_keys=True, ensure_ascii=False)
 
 
 #######################################服务器昨日新增用户数量###############################################
@@ -181,7 +80,7 @@ async def file_save(path: str, value):
 #设置监看并在指定频道发送信息
 @bot.command(name='adld', case_sensitive=False)
 async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
-    logging(msg)
+    log_msg(msg)
     if op < 0 or op > 2:
         await msg.reply(f"选项参数错误，目前只支持 \n0:不推送信息\n1:在本频道推送信息\n2:推送信息的同时修改本频道名")
         return
@@ -206,11 +105,11 @@ async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
             LAdict[guild_id] = {
                 'channel': msg.ctx.channel.id,
                 'option': op,
-                'date': GetDate(),
+                'date': get_date(),
                 'user_total': 0,
                 'increase': 0
             }
-            print(f"[adld] new LAdict[{guild_id}]")
+            _log.info(f"[adld] new LAdict[{guild_id}]")
 
         if flag_sv:
             if flag_op:
@@ -243,23 +142,20 @@ async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
                     f"本服务器`昨日新增用户`追踪器已开启！\n- 您设置了第二个参数`2`，bot会在每天的00:00向当前频道发送一条昨日用户数量变动信息\n- 同时将更新本频道名称为 `📈：昨日变动 变动人数`\n"
                 )
 
-        await file_save("./log/yesterday.json", LAdict)  # 保存文件
-        print(
-            f"[{GetTime()}] [adld] G:{guild_id} C:{channel_id} add by Au:{msg.author_id}"
+        await LAdict.save_aio()
+        _log.info(
+            f"[{get_time()}] [adld] G:{guild_id} C:{channel_id} add by Au:{msg.author_id}"
         )
     except Exception as result:
-        err_str = f"ERR! [{GetTime()}] /adld - {result}"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] /adld - {result}"
+        _log.exception(f"[ERR] err in command /adld | uid:{msg.author_id}")
         cm2 = CardMessage()
         c = Card(Module.Header(f"很抱歉，发生了一些错误"))
         c.append(Module.Divider())
         c.append(Module.Section(f"{err_str}\n\n您可能需要重新设置本频道的追踪器"))
         c.append(Module.Divider())
-        c.append(
-            Module.Section(
-                '有任何问题，请加入帮助服务器与我联系',
-                Element.Button('帮助', 'https://kook.top/gpbTwZ',
-                               Types.Click.LINK)))
+        c.append(Module.Section('有任何问题，请加入帮助服务器与我联系',
+                    Element.Button('帮助', 'https://kook.top/gpbTwZ', Types.Click.LINK)))
         cm2.append(c)
         await msg.reply(cm2)
         #发送错误信息到指定频道
@@ -269,20 +165,20 @@ async def Add_YUI_ck(msg: Message, op: int = 0, *arg):
 # 手动查看服务器的昨日新增
 @bot.command(name='ldck', case_sensitive=False)
 async def yday_inc_check(msg: Message):
-    logging(msg)
+    log_msg(msg)
     try:
         global LAdict
         if msg.ctx.guild.id in LAdict:
-            if LAdict[msg.ctx.guild.id]['date'] != GetDate():  #日期不相等
+            if LAdict[msg.ctx.guild.id]['date'] != get_date():  #日期不相等
                 await msg.reply(
                     f"昨日用户变动为：{LAdict[msg.ctx.guild.id]['increase']}")
-            elif LAdict[msg.ctx.guild.id]['date'] == GetDate():  #日期相等
+            elif LAdict[msg.ctx.guild.id]['date'] == get_date():  #日期相等
                 await msg.reply(f"设下追踪器还没到一天呢，明天再来试试吧！")
         else:
             await msg.reply(f"您尚未开启本服务器的新增用户追终器，请使用`/adld`开启")
     except Exception as result:
-        err_str = f"ERR! [{GetTime()}] /ldck - {result}"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] /ldck - {result}"
+        _log.exception(f"[ERR] err in command /ldck | uid:{msg.author_id}")
         await msg.reply(err_str)
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
@@ -291,14 +187,14 @@ async def yday_inc_check(msg: Message):
 # 关闭服务器的昨日新增追踪器
 @bot.command(name='tdld', case_sensitive=False)
 async def td_yday_inc_check(msg: Message):
-    logging(msg)
+    log_msg(msg)
     global LAdict
     if msg.ctx.guild.id in LAdict:
         del LAdict[msg.ctx.guild.id]
         await msg.reply(f"已成功取消本服务器的`昨日新增用户`追踪器")
         #最后重新执行写入
-        await file_save("./log/yesterday.json", LAdict)
-        print(f"[{GetTime()}] Del Yday_Inc: G:{msg.ctx.guild.id}")
+        await LAdict.save_aio()
+        _log.info(f"[{get_time()}] Del Yday_Inc: G:{msg.ctx.guild.id}")
     else:
         await msg.reply(f"本服务器暂未开启`昨日新增用户`追踪器")
 
@@ -308,7 +204,7 @@ async def yesterday_UIC():
     global LAdict
     LAdict_temp = copy.deepcopy(LAdict)
     for g, s in LAdict_temp.items():
-        print(f"[{GetTime()}] Yday_INC %s" % s)  #打印log信息
+        _log.info(f"[{get_time()}] Yday_INC %s" % s)  #打印log信息
         try:  # 获取服务器信息
             ret = await server_status(g)
             # 用户不在服务器内（bot被踢了）删除键值
@@ -316,7 +212,7 @@ async def yesterday_UIC():
                 log_str = f"ERR! [Yday_INC] {ret}\n"
                 log_str += f"[Yday_INC] del G:{g}"
                 del LAdict[g]  # 删除服务器
-                print(log_str)
+                _log.warning(log_str)
                 continue
 
             total = ret['data']['user_count']  # 当前服务器用户数量
@@ -363,41 +259,41 @@ async def yesterday_UIC():
             err_str = traceback.format_exc()
             if "guild_id不存在" in err_str or "权限" in err_str:
                 del LAdict[g]  # 删除服务器
-                print(f"[{GetTime()}] Yday_INC del LAdict[{g}] | {traceback.format_exc()}")
+                _log.exception(f"Yday_INC del LAdict[{g}]")
             elif 'connect' in err_str: # 网络问题
-                print(f"[{GetTime()}] Yday_INC s:{g} | {str(result)}")
+                _log.error(f"Yday_INC s:{g} | {str(result)}")
             else:
-                err_str = f"ERR! [{GetTime()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
+                err_str = f"ERR! [{get_time()}] Yday_INC s:{g}\n```\n{traceback.format_exc()}\n```\n"
+                _log.exception(f"Yday_INC error!")
                 await bot.client.send(debug_ch, err_str)# 发送错误信息到指定频道
                 continue # 继续执行
 
     #需要重新执行写入（更新）
-    await file_save("./log/yesterday.json", LAdict)
-    print(f"[BOT.TASK] Yday_INC finished at {GetTime()}")
+    await LAdict.save_aio()
+    _log.info(f"[BOT.TASK] Yday_INC finished at {get_time()}")
 
 
 #定时任务，在0点01分的时候向指定频道发送昨日新增用户数量的提示
 @bot.task.add_cron(hour=0, minute=1, timezone="Asia/Shanghai")
 async def yesterday_UserIncrease():
-    log_flush()
     try:
         await yesterday_UIC()
     except Exception as result:
-        err_str = f"ERR! [{GetTime()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
+        _log.exception("[ERR] error in yesterday_UserIncrease task")
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
 
 
 @bot.command(name='ync', case_sensitive=False)
 async def yesterday_cmd(msg: Message, *arg):
-    logging(msg)
+    log_msg(msg)
     try:
         if msg.author_id == config['master_id']:
             await yesterday_UIC()
     except Exception as result:
-        err_str = f"ERR! [{GetTime()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] Yday_INC\n```\n{traceback.format_exc()}\n```\n"
+        _log.exception("[ERR] error in /ync yesterday_cmd")
         #发送错误信息到指定频道
         await msg.reply(err_str)
         await bot.client.send(debug_ch, err_str)
@@ -409,7 +305,7 @@ async def yesterday_cmd(msg: Message, *arg):
 # 直接查看本服务器状态
 @bot.command(name='svck', case_sensitive=False)
 async def server_user_check(msg: Message):
-    logging(msg)
+    log_msg(msg)
     try:
         ret = await server_status(msg.ctx.guild.id)
         total = ret['data']['user_count']
@@ -418,13 +314,13 @@ async def server_user_check(msg: Message):
         # 用服务器小工具获取更加准确的服务器在线人数
         ret = await server_alive_count_weidget(msg.ctx.guild.id)
         if ret and 'online_count' in ret:
-            print(f"{msg.ctx.guild.id} | online count old:{online} new:{ret['online_count']}")
+            _log.info(f"{msg.ctx.guild.id} | online count old:{online} new:{ret['online_count']}")
             text += f"\n服务器小工具获取到的在线人数：{ret['online_count']}"
         
         await msg.reply(text)
     except Exception as result:
-        err_str = f"ERR! [{GetTime()}] check_server_user_status: ```\n{traceback.format_exc()}\n```\n"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] check_server_user_status: ```\n{traceback.format_exc()}\n```\n"
+        _log.exception(f"[ERR] error in /svck command | uid:{msg.author_id}")
         await msg.reply(err_str)
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
@@ -484,23 +380,17 @@ async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
             await msg.reply(f"本服务器在线人数监看已修改频道为{ch}\n前缀 [{front}]\n后缀 [{back}]")
         else:
             # ↓服务器id错误时不会执行下面的↓
-            print(
+            _log.info(
                 f"First_Update successful! {SVdict[msg.ctx.guild.id]['front']}{online}/{total}{SVdict[msg.ctx.guild.id]['back']}"
             )
             await msg.reply(f'服务器监看系统已添加，首次更新成功！\n前缀 [{front}]\n后缀 [{back}]')
 
         #不管是否已存在，都需要重新执行写入（更新/添加）
-        with open("./log/server.json", 'w', encoding='utf-8') as fw1:
-            json.dump(SVdict,
-                      fw1,
-                      indent=2,
-                      sort_keys=True,
-                      ensure_ascii=False)
-        fw1.close()
+        SVdict.save()
 
     except Exception as result:
         err_str = f"[adsv] Au:{msg.author_id}\n```\n{traceback.format_exc()}\n```"
-        print(err_str)
+        _log.exception("[ERR] error in Add_server_user_update ")
         cm2 = CardMessage()
         c = Card(Module.Header(f"很抱歉，发生了一些错误"))
         c.append(Module.Divider())
@@ -518,7 +408,7 @@ async def Add_server_user_update(msg: Message, ch: str, front: str, back: str):
 # 手动指定频道id（适用于分组的情况）
 @bot.command(name='adsv1', aliases=['在线人数监看1'], case_sensitive=False)
 async def adsv_1(msg: Message, front: str = "频道在线 ", back: str = " "):
-    logging(msg)
+    log_msg(msg)
     # 直接执行下面的函数
     ch = msg.ctx.channel.id
     await Add_server_user_update(msg, ch, front, back)
@@ -530,7 +420,7 @@ async def adsv_2(msg: Message,
                  ch: str = 'err',
                  front: str = "频道在线 ",
                  back: str = " "):
-    logging(msg)
+    log_msg(msg)
     if ch != 'err':  # 检查频道id是否有效
         url_ch = kook_base_url + "/api/v3/channel/view"
         params = {"target_id": ch}
@@ -556,19 +446,14 @@ async def adsv_2(msg: Message,
 # 取消在线人数监看
 @bot.command(name='tdsv', aliases=['退订在线人数监看'], case_sensitive=False)
 async def Cancel_server_user_update(msg: Message):
-    logging(msg)
+    log_msg(msg)
     global SVdict
     if msg.ctx.guild.id in SVdict:
         await msg.reply(f"已成功取消本服务器的在线人数监看")
         # 保存到文件
         del SVdict[msg.ctx.guild.id]
-        with open("./log/server.json", 'w', encoding='utf-8') as fw1:
-            json.dump(SVdict,
-                      fw1,
-                      indent=2,
-                      sort_keys=True,
-                      ensure_ascii=False)
-        print(f"tdsv - Cancel: G:{msg.ctx.guild.id}")
+        SVdict.save()
+        _log.info(f"tdsv - Cancel: G:{msg.ctx.guild.id}")
     else:  # 不存在
         await msg.reply(f"本服务器暂未开启在线人数监看")
 
@@ -578,7 +463,7 @@ async def Cancel_server_user_update(msg: Message):
 async def server_user_update():
     global SVdict
     try:
-        print(f"[BOT.TASK] server_user_update start at {GetTime()}")
+        _log.info(f"[BOT.TASK] server_user_update start at {get_time()}")
         SVdict_temp = copy.deepcopy(SVdict)  #深拷贝
         log_text = "[BOT.TASK] server_user_update: "
         for g, s in SVdict_temp.items():
@@ -590,7 +475,7 @@ async def server_user_update():
                     log_str = f"ERR! [GusrUPD] {ret}\n"
                     log_str += f"[GusrUPD] Del G:{g} D:{s}"
                     del SVdict[g]  #删除键值
-                    print(log_str)
+                    _log.warning(log_str)
                     continue
 
                 total = ret['data']['user_count']
@@ -608,31 +493,40 @@ async def server_user_update():
             except Exception as result:
                 err_cur = str(traceback.format_exc())
                 if "json.decoder.JSONDecodeError" in err_cur:
-                    print(f"[{GetTime()}] server_user_update | G:{g} | {await response.text()}") # 打印结果字符串
+                    _log.error(f"server_user_update | G:{g} | {await response.text()}") # 打印结果字符串
                 elif "guild_id不存在" in err_cur or "权限" in err_cur:
                     del SVdict[g]  # 删除服务器
-                    print(f"[{GetTime()}] server_user_update | del SVdict[{g}] | {str(result)}")
+                    _log.error(f"server_user_update | del SVdict[{g}] | {str(result)}")
                 elif 'connect' in err_cur:  # 网络问题
-                    print(f"[{GetTime()}] server_user_update | {str(result)}")
+                    _log.error(f"server_user_update | {str(result)}")
                 else:
-                    err_str = f"ERR! [{GetTime()}] server_user_update:{g}\n```\n{traceback.format_exc()}\n```\n"
+                    err_str = f"ERR! [{get_time()}] server_user_update:{g}\n```\n{traceback.format_exc()}\n```\n"
                     await bot.client.send(debug_ch, err_str)# 发送错误信息到指定频道
                     continue # 继续执行
 
         # 不相同代表有删除，保存
         if SVdict_temp != SVdict:
-            await file_save("./log/server.json", SVdict)
+            await SVdict.save_aio()
         # 打印log过程
-        print(log_text)
+        _log.info(log_text)
     except Exception as result:
         if 'connect to' in str(result):  # 网络问题
-            return print(f"[{GetTime()}] server_user_update_status | {str(result)}")
+            return _log.error(f"server_user_update_status | {str(result)}")
         # 打印完整错误
-        err_str = f"ERR! [{GetTime()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
-        print(err_str)
+        err_str = f"ERR! [{get_time()}] update_server_user_status:\n```\n{traceback.format_exc()}\n```\n"
+        _log.exception("[ERR] err in update_server_user_status")
         #发送错误信息到指定频道
         await bot.client.send(debug_ch, err_str)
 
+
+@bot.task.add_interval(minutes=4)
+async def save_file_task():
+    """定时保存所有文件"""
+    try:
+        await save_all_file()
+        _log.info(f"save file task finished at {get_time()}")
+    except:
+        _log.critical(f"[FATAL] save file task failed!\n{traceback.format_exc()}")
 
 # 开机任务
 @bot.task.add_date()
@@ -640,17 +534,15 @@ async def startup_task():
     try:
         global debug_ch
         debug_ch = await bot.client.fetch_public_channel(config['debug_ch'])
-        print(f"[Start] fetch debug channel success")
-        log_flush()
+        _log.info(f"[Start] fetch debug channel success")
     except:
         err_cur = str(traceback.format_exc())
-        print(f"ERR ON START UP!\n{err_cur}")
-        log_flush()
+        _log.critical(f"ERR ON START UP!\n{err_cur}")
         os._exit(-1)
 
 # 开机
 if __name__ == '__main__':
     # 开机的时候打印一次时间，记录重启时间
-    print(f"[Start] at [%s]" % GetTime())
+    _log.info(f"[Start] at [%s]" % get_time())
     # 开机
     bot.run()

@@ -3,3 +3,5 @@ log/
 *.out*
 *.log*
 code/log
+
+__pycache__/
